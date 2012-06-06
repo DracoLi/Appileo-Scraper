@@ -1,0 +1,52 @@
+API Documentation
+=================
+
+
+GENERAL STRUCTURE (GET):
+========================
+
+http://www.appileo.com/{method}?(/{device}/?({category}))
+
+method => ['top', 'new', 'lookup']
+device => ['iphone', 'ipad']
+category => ['free', 'paid', 'grossing']
+
+
+LOOKUP:
+=======
+
+=>http://www.appileo.com/lookup?
+
+Parameters:
+app_id					'12345'
+title					'Lord of the rings'
+publisher				'Hyper H Labs'
+category				'?'
+price					'0.99'								
+min_price				'1.99'
+max_price				'9.00'
+region					'CA'
+application ratings		'5'
+device					'iphone'
+
+
+TOP/NEW:
+========
+
+=> http://www.appileo.com/top/iphone/free
+Retrieves top 500 iPhone free apps
+
+=> http://www.appileo.com/top/ipad/paid
+Retrieves top 500 iPhone paid apps
+
+=> http://www.appileo.com/top/iphone/grossing
+Retrieves top 500 iPhone grossing apps
+
+=> http://www.appileo.com/new/ipad/free
+Retrieves new iPad free apps
+
+=> http://www.appileo.com/new/ipad/
+Retrieves new iPad apps
+
+=> http://www.appileo.com/top/iphone/
+Retrieves top 500 iPhone apps

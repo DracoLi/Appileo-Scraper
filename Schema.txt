@@ -1,0 +1,40 @@
+app
+{
+	id : ObjectId(''),
+	app_id: '',
+	rank: {
+		paid: '',
+		free: '',
+		grossing: ''
+	}
+	bundle_id: '',
+	name: '',
+	title: '',
+	link: '',
+	summary: '',
+	summary_html:'',
+	website: '',
+	support: '',
+	legal: {rights: '', agreement: ''},
+	devices: ['iPhone', 'iPad'],
+	release: Date(),
+	advisory: '',
+	game_center: '',
+	size: '',
+	publisher: { name: '', company:'', id: '', link: ''},
+	price: { amount:'', currency: '' },
+	lang: ['', ''],
+	pics: {
+		iPhone: ['', ''],
+		iPad: ['', ''],
+		icons: { 60: '', 100: '', 512: '' }
+	},
+	region,
+	version: {
+		num: ''
+		date: Date(‘’),
+		desc: ‘’,
+		ratings: [{ avg: '', num: '' }],
+		reviews: [{user: '', title: '', version: '', date: '', helpful: '?', rating:''}]
+	}
+}
