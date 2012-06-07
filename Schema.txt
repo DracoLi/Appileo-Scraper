@@ -31,7 +31,8 @@ app
 	},
 	region,
 	version: {
-		num: ''
+		num: '',
+		country: '',
 		date: Date(‘’),
 		desc: ‘’,
 		ratings: [{ avg: '', num: '' }],
