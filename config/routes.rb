@@ -13,14 +13,14 @@ Appileo::Application.routes.draw do
   
   # This route can be invoked with
   # top_url(:device => iphone|ipad, :category => free|paid|grossing)      
-  match "/top/(:device(/:category))"  => "app_data#top_data",
+  match "/top/:device/:category"  => "app_data#top_data",
         :via => [:get],
         :constraints => constraint_dict,
         :as => :top
   
   # This route can be invoked with
   # new_url(:device => iphone|ipad, :category => free|paid|grossing)      
-  match "/new/(:device(/:category))"  => "app_data#new_data",
+  match "/new/:category"  => "app_data#new_data",
         :via => [:get],
         :constraints => constraint_dict,
         :as => :new
