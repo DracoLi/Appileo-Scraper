@@ -1,21 +1,58 @@
-module ConstModule
-  APP_STORE_URL   = "http://itunes.apple.com/genre/ios-education/id6017?mt=8&letter=%s&page=%d"
-  NEXT_AVAILABLE  = "//ul[@class='list paginate']/li/a[@class='paginate-more']" 
-  SCRAPE_START    = "div.grid3-column#selectedcontent"
-  SCRAPE_QUERY    = "//div[@id='selectedcontent']/div/ul/li/a[contains(@href, 'id')]"
-  HREF            = "href"
-  
-  ITUNES_LOOKUP_URL = "http://itunes.apple.com/lookup?id=%s&country=%s"
-  RESULT_COUNT      = "resultCount"
-  
+module ScraperConstants
+
+  # Debug info
   DEBUG           = true
   DEBUG_MAX_PAGES = 1
-  DEBUG_MAX_APPS  = 10 
+  DEBUG_MAX_APPS  = 2
   
+  # General Constants
+  HREF      = "href"
+  BR        = "<br />"
+  NEW_LINE  = "\n"
   
+  # Reviews scraper
+  REVIEW_QUERY          = "/a:Document/a:View/a:ScrollView/a:VBoxView/a:View/a:MatrixView/a:VBoxView[position()=1]/a:VBoxView/a:VBoxView"
+  REVIEW_NAMESPACE      = {'a' => 'http://www.apple.com/itms/'}                      
+  REVIEW_CURL_CMD       = "curl -s -A \"iTunes/9.2 (Macintosh; U; Mac OS X 10.6\" " +
+                          "-H \"X-Apple-Store-Front: %s-1\" " + 
+                          "'http://ax.phobos.apple.com.edgesuite.net/" + 
+                          "WebObjects/MZStore.woa/wa/viewContentsUserReviews" + 
+                          "?id=%s&pageNumber=%d&sortOrdering=4&type=Purple+Software' " + 
+                          "| xmllint --format --recover - 2>/dev/null"
+
+  REVIEW_RATING_REGEX   = /alt="(\d+) star(s?)"/
+  REVIEW_VERSION_REGEX  = /Version (.*)/
+
+  # App info scraper
+  APP_STORE_URL       = "http://itunes.apple.com/genre/ios-education/id6017?mt=8&letter=%s&page=%d"
+  NEXT_AVAILABLE      = "//ul[@class='list paginate']/li/a[@class='paginate-more']" 
+  SCRAPE_START        = "div.grid3-column#selectedcontent"
+  SCRAPE_QUERY        = "//div[@id='selectedcontent']/div/ul/li/a[contains(@href, 'id')]"
+  APP_ID_REGEX        = /\/id(.*)\?/
+  ITUNES_LOOKUP_URL   = "http://itunes.apple.com/lookup?id=%s&country=%s"
+  RESULT_COUNT        = "resultCount"
+  
+  # RSS Feed links
+  RSS_LIMIT = 2
+  RSS_LINKS = [
+    { :name => 'top_free_apps_iphone',  :url => 'http://itunes.apple.com/%s/rss/topfreeapplications/limit=%d/genre=6017/json' },
+    { :name => 'top_paid_apps_iphone',  :url => 'http://itunes.apple.com/%s/rss/toppaidapplications/limit=%d/genre=6017/json' },
+    { :name => 'top_gros_apps_iphone',  :url => 'http://itunes.apple.com/%s/rss/topgrossingapplications/limit=%d/genre=6017/json' },
+    { :name => 'top_free_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/topfreeipadapplications/limit=%d/genre=6017/json' },
+    { :name => 'top_paid_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/toppaidipadapplications/limit=%d/genre=6017/json' },
+    { :name => 'top_gros_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/topgrossingipadapplications/limit=%d/genre=6017/json' },
+    #{ :name => 'new_apps',              :url => 'http://itunes.apple.com/%s/rss/newapplications/limit=%d/genre=6017/json' },
+    #{ :name => 'new_free_apps',         :url => 'http://itunes.apple.com/%s/rss/newfreeapplications/limit=%d/genre=6017/json' },
+    #{ :name => 'new_paid_apps',         :url => 'http://itunes.apple.com/%s/rss/newpaidapplications/limit=%d/genre=6017/json' }
+  ]
+  RSS_NAMESPACES  = {'a' => 'http://www.w3.org/2005/Atom', 'im' => 'http://itunes.apple.com/rss'}
+  RSS_XPATH       = '//a:id[@im:id]'
+  
+  # List of stores, to enable remove comment from the line and add 
+  # the corresponding apple store code 
   STORES = [
-  { :name => 'United States',        :id => 143441,         :code => 'us'},
-  { :name => 'Canada',               :id => 143455,         :code => 'ca'},
+  { :name => 'United States',        :id => 143441,   :code => 'us'},
+  { :name => 'Canada',               :id => 143455,   :code => 'ca'}
 #  { :name => 'Argentina',            :id => 143505},
 #  { :name => 'Australia',            :id => 143460},
 #  { :name => 'Belgium',              :id => 143446},
