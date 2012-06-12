@@ -6,8 +6,8 @@ class Publisher
   
   # Publisher id is float in order to avoid overflow
   key :p_id,        Float,    :required => true
-  key :name,      String,   :required => true
-  key :company,   String,   :required => true
+  key :name,      String,     :required => true
+  key :company,   String,     :required => true
   
   timestamps!
 

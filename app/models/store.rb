@@ -7,12 +7,12 @@ class Store
   key :country,             String,   :required => true
   key :release_date,        Time,     :required => true
   key :link,                String,   :required => true
-  key :publisher_link,      String,   :required => true
+  key :p_link,              String,   :required => true
   
-  key :total_ratings_count,  String
-  key :total_average_rating, String
-  key :current_ratings_count,  String
-  key :current_average_rating, String
+  key :total_ratings_count,  Integer
+  key :total_average_rating, Float
+  key :current_ratings_count,  Integer
+  key :current_average_rating, Float
   
   one :rank
   one :price 
