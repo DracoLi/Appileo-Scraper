@@ -69,5 +69,8 @@ module Appileo
     config.generators do |g|
       g.orm :mongo_mapper
     end
+    
+    # Include scraper modules
+    config.autoload_paths += %W(#{config.root}/lib/tasks/scraper)
   end
 end
