@@ -2,7 +2,8 @@ Appileo::Application.routes.draw do
   
   #Constraint dictionary for path values of the API calls
   constraint_dict = { :device => /iphone|ipad/,
-                      :category => /free|paid|grossing/
+                      :category => /free|paid|gros/,
+                      :country => /us|ca/
                     }
   
   # This route can be invoked with
@@ -12,8 +13,8 @@ Appileo::Application.routes.draw do
         :as => :lookup
   
   # This route can be invoked with
-  # top_url(:device => iphone|ipad, :category => free|paid|grossing)      
-  match "/top/:device/:category"  => "app_data#top_data",
+  # top_url(:device => iphone|ipad, :category => free|paid|grossing, :country => us|ca)      
+  match "/top/:device/:category/:country"  => "app_data#top_data",
         :via => [:get],
         :constraints => constraint_dict,
         :as => :top

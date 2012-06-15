@@ -4,22 +4,32 @@ class AppDataController < ApplicationController
   
   def top_data
     
-    a = AppData.all.uniq.first
-    #puts a.app_id
-    #puts a.bundle_id
+    device = params[:device]
+    category = params[:category]
+    country = params[:country]
     
-    message = 'select apps successfully'
-    if a.valid?
-      message = a.errors
-    end
-    render :json => { :success    => true,
-                      :message    => message, 
-                      :apps_data  => a.as_json
-                    }
-  end
-  
-  def new_data
-    render :text => "new"
+    # Format the rank we want to get
+    rank = "rank.top_%s_apps_%s" % [category, device]
+    
+    logger.info(rank)
+    
+    apps = AppData.where(
+      {'store' => 
+        {'$elemMatch' => 
+          {'country' => country, 
+            rank => {:$gt => 0}
+          }
+        }
+      }).all
+      
+    # .sort( 'store.' + rank )
+    
+    render :json => {
+      :success    => true,
+      :message    => "Success",
+      :apps_data  => apps.as_json
+    }
+    
   end
   
   def lookup_data
@@ -54,8 +64,7 @@ class AppDataController < ApplicationController
     
     puts query
     
-    #render :text => request.query_parameters
-    render :json => AppData.search(query).all.as_json
+    render :json => AppData.search(query).limit(100).all.as_json
   end
   
 end
