@@ -12,7 +12,9 @@ module Scraper
     save_needed = false
 
     # Handle special case for supported devices if 'all'
-    if (data['supportedDevices'] - ['all'] == [])
+    if data['supportedDevices'] == nil
+      supported_devices = ['iphone', 'ipad']
+    elsif (data['supportedDevices'] - ['all'] == [])
       supported_devices = ['iphone', 'ipad']
     else
       supported_devices = data['supportedDevices']
@@ -133,7 +135,8 @@ module Scraper
     last_date = nil
     if !app.store[store_index].review.empty?
       app.store[store_index].review.each do |review|
-        last_date = review.date if (last_date == nil || review.date > last_date)
+        # TODO: check why some apps return with no date
+        last_date = review.date if last_date == nil || (review.date != nil && review.date > last_date)
       end
     end
     
@@ -143,7 +146,7 @@ module Scraper
     # Iterate through all reviews
     store_reviews.each do |review|
       # TODO: make sure there will be no duplicates in reviews
-      if last_date == nil || Date.parse(review[:date]) > last_date 
+      if (review[:date] != nil) && (last_date == nil || Date.parse(review[:date]) > last_date) 
         # If review was recorded later then the latest review,
         # add it to the database, otherwise ignore
         attributes = {:body => review[:body],
@@ -183,8 +186,50 @@ module Scraper
     
     return save_needed
   end
+  
+  # Method that processes the Rank Embedded Document
+  # inside Store inside AppData 'app' with the data provided
+  # Returns true if changes were made and later save is needed
+  # false otherwise
+  def self.rankings_data_processor(app, store_index, ranking)
+    # Create hash with all values to be checked
+    # Keys have to be in 'string' format instead of :string
+    # in order to be able to match the keys to the ones
+    # returned in the data using 'diff' on the hashes
+    
+    if ranking != nil
+      attributes = {'top_free_apps_iphone' => ranking.has_key?('top_free_apps_iphone') ? ranking['top_free_apps_iphone'] : nil,
+                    'top_paid_apps_iphone' => ranking.has_key?('top_paid_apps_iphone') ? ranking['top_paid_apps_iphone'] : nil,
+                    'top_gros_apps_iphone' => ranking.has_key?('top_gros_apps_iphone') ? ranking['top_gros_apps_iphone'] : nil,
+                    'top_free_apps_ipad' => ranking.has_key?('top_free_apps_ipad') ? ranking['top_free_apps_ipad'] : nil,
+                    'top_paid_apps_ipad' => ranking.has_key?('top_paid_apps_ipad') ? ranking['top_paid_apps_ipad'] : nil,
+                    'top_gros_apps_ipad' => ranking.has_key?('top_gros_apps_ipad') ? ranking['top_gros_apps_ipad'] : nil,
+                    'new_apps' => ranking.has_key?('new_apps') ? ranking['new_apps'] : nil,
+                    'new_free_apps' => ranking.has_key?('new_free_apps') ? ranking['new_free_apps'] : nil,
+                    'new_free_apps' => ranking.has_key?('new_free_apps') ? ranking['new_free_apps'] : nil }
+      
+      
+    else
+      attributes = {'top_free_apps_iphone' => nil,
+                    'top_paid_apps_iphone' => nil,
+                    'top_gros_apps_iphone' => nil,
+                    'top_free_apps_ipad' => nil,
+                    'top_paid_apps_ipad' => nil,
+                    'top_gros_apps_ipad' => nil,
+                    'new_apps' => nil,
+                    'new_free_apps' => nil,
+                    'new_free_apps' => nil }  
+    end
+    
+    # Return boolean marking if object was created or updated and
+    # needs to be saved, written, to the db afterwards
+    save_needed, app.store[store_index].rank = 
+      create_or_update_object(app.store[store_index].rank, Rank, attributes)
+    
+    return save_needed
+  end
 
-  def self.store_processor(app, store_index, country, data, store_reviews)
+  def self.store_data_processor(app, store_index, country, data, store_reviews, ranking)
   
     attributes = {:country => country,
                   :release_date => data['releaseDate'],
@@ -212,9 +257,11 @@ module Scraper
     end
     
     save_needed_price = price_data_processor(app, store_index, data)
-    save_needed_reviews = reviews_data_processor(app, store_index, store_reviews)
+    #save_needed_reviews = reviews_data_processor(app, store_index, store_reviews)
+    save_needed_reviews = false
+    save_needed_rankings = rankings_data_processor(app, store_index, ranking)
     
-    return save_needed_store || save_needed_price || save_needed_reviews
+    return save_needed_store || save_needed_price || save_needed_reviews || save_needed_rankings
     
   end
 
@@ -235,9 +282,8 @@ module Scraper
 
   end
 
-  def self.scrape_apps()
-
-    new_apps = ScraperWorker.scrape_all
+  def self.scrape_apps(new_apps, rankings)
+    
     # If scaper returned successfully, load all apps to memory
     # This allows comparisson without hitting the DB for every app
     # NOTE: If data goes above machine RAM, work has to be done in chunks
@@ -250,8 +296,8 @@ module Scraper
 
       stores_result = app_data[:result]
       stores_reviews = app_data[:reviews]
-      raise "ERROR: number of countries does not match in results and reviews" \
-        unless Integer(stores_result.length) == Integer(stores_reviews.length)       
+      #raise "ERROR: number of countries does not match in results and reviews" \
+      #  unless Integer(stores_result.length) == Integer(stores_reviews.length)       
 
       # Run app specific processing that is not related to stores
       puts "\nProcessing app id: " + app_id
@@ -263,13 +309,30 @@ module Scraper
         
       # Get first set of values from the 0 store since all
       # stores hold the same generic values
-      data = stores_result.values[0]
+      found_country = nil
+      stores_result.each do |country, store_data|
+        if store_data != nil && !store_data.empty?
+          found_country = country
+          break
+        end  
+      end
+      
+      if found_country != nil
+        data = stores_result[found_country]
+      else
+        break
+      end
 
       is_save_needed = true if app_processor(app, data)
 
       # Iterate on all stores that were scraped
       (stores_result).each do |country, store_data|
-        puts "Processing store: " + country
+        if store_data == nil || store_data.empty?
+          next
+        end
+      
+        store_data['trackId'] = app_id if store_data['trackId'] == nil
+        
         raise "ERROR: app_id does not equal trackId, check mapping." \
         unless Integer(app_id) == Integer(store_data['trackId'])
         
@@ -290,7 +353,13 @@ module Scraper
             store_index = i if app.store[i].country == country
           end
         end
-        is_save_needed = true if store_processor(app, store_index, country, store_data, store_reviews)
+        
+        ranking = nil
+        if rankings.has_key?(country) && rankings[country].has_key?(app_id)
+          ranking = rankings[country][app_id]
+        end
+        
+        is_save_needed = true if store_data_processor(app, store_index, country, store_data, store_reviews, ranking)
       end
 
       if is_save_needed
@@ -302,6 +371,42 @@ module Scraper
       end
     end
   end
+  
+  # Method to scrape all apps from the app store
+  def self.scrape_apps_all()
+    scrape_apps(ScraperWorker.scrape_all)
+  end
+  
+  # Method to scrape all apps in a certain letter from the app store
+  def self.scrape_apps_letter(letter)
+    rankings = ScraperWorker.get_rankings
+    scrape_apps(ScraperWorker.scrape_letter(letter), rankings)
+  end
+  
+  # method to scrape a specific app
+  def self.scrape_apps_id(app_id)
+    rankings = ScraperWorker.get_rankings
+    # Pass to scrape_apps the right format for the data
+    scrape_apps( { app_id => ScraperWorker.scrape_app(app_id)} , rankings)
+  end
+  
+  # method to scrape all apps with rankings
+  def self.scrape_apps_ranked()
+    rankings = ScraperWorker.get_rankings
+    
+    
+    rankings.each do |country, ranks|
+      ranks.each do |app_id, app_data|
+        # Pass to scrape_apps the right format for the data
+        scrape_apps( { app_id => ScraperWorker.scrape_app(app_id)}, rankings )
+      end
+    end
+  end
+  
 end
 
-Scraper.scrape_apps
+# Uncomment one of the lines below in order to run the scraper
+#Scraper.scrape_apps_id('352320289')
+#Scraper.scrape_apps_letter('A')
+#Scraper.scrape_apps_ranked()
+#Scraper.scrape_apps_all()
