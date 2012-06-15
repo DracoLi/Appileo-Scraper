@@ -1,0 +1,11 @@
+In order to test the scaper you can run
+
+rails runner lib/tasks/scraper/scraper.rb
+
+after uncommenting one of the lines below that exists at the bottom of scraper.rb
+
+# Uncomment one of the lines below in order to run the scraper
+#Scraper.scrape_apps_id('352320289')
+#Scraper.scrape_apps_letter('A')
+#Scraper.scrape_apps_ranked()
+#Scraper.scrape_apps_all()

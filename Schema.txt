@@ -1,7 +1,15 @@
-app
-{
+app {
 	id : ObjectId(''),
 	app_id: '',
+	stores: { us: { info: {
+		
+			  },
+			  reviews: {
+			  
+			  }
+		}
+	}
+}
 	rank: {
 		paid: '',
 		free: '',
