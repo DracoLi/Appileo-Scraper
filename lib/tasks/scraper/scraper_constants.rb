@@ -1,39 +1,69 @@
 module ScraperConstants
 
-  # Debug info
-  DEBUG           = true
-  DEBUG_MAX_PAGES = 1
-  DEBUG_MAX_APPS  = 2
+  ### Debug info
   
-  # General Constants
+  # Enable and disable debugging
+  DEBUG           = true
+  # Limit on how many pages of apps to scrape from itunes. 
+  # NOTE: Only works if DEBUG enabled.
+  DEBUG_MAX_PAGES = 1
+  # Limit on number of apps to be scraped, including itunes lookup and reviews.
+  # NOTE: Only works if DEBUG enabled.
+  DEBUG_MAX_APPS  = 500
+  
+  ### General Constants
   HREF      = "href"
   BR        = "<br />"
   NEW_LINE  = "\n"
   
-  # Reviews scraper
+  ### Reviews scraper
+  # Xpath query to get the user reviews
   REVIEW_QUERY          = "/a:Document/a:View/a:ScrollView/a:VBoxView/a:View/a:MatrixView/a:VBoxView[position()=1]/a:VBoxView/a:VBoxView"
-  REVIEW_NAMESPACE      = {'a' => 'http://www.apple.com/itms/'}                      
+  # XML Namespace that apple uses for the reviews page. Need to pass this
+  # namespace in order to do an XML search.
+  REVIEW_NAMESPACE      = {'a' => 'http://www.apple.com/itms/'}
+  # Curl command to retrieve the list of reviews for the apps
+  # We specify the user agent and the apple country ID that itunes needs
+  # in order to get the appropriate list.
+  # There is no way to get all the reviews all at once so we need to ask for 
+  # reviews in individual countries and then merge them.                      
   REVIEW_CURL_CMD       = "curl -s -A \"iTunes/9.2 (Macintosh; U; Mac OS X 10.6\" " +
                           "-H \"X-Apple-Store-Front: %s-1\" " + 
                           "'http://ax.phobos.apple.com.edgesuite.net/" + 
                           "WebObjects/MZStore.woa/wa/viewContentsUserReviews" + 
                           "?id=%s&pageNumber=%d&sortOrdering=4&type=Purple+Software' " + 
                           "| xmllint --format --recover - 2>/dev/null"
-
+  # Regex to determine the rating a use gave an app
   REVIEW_RATING_REGEX   = /alt="(\d+) star(s?)"/
+  # Regex to determine the version number of the app that was rated
   REVIEW_VERSION_REGEX  = /Version (.*)/
 
-  # App info scraper
+  ### App info scraper
+  # The URL for the list of apps in the education category
+  # NOTE: This needs to be converted to an array in order to suppoert multiple
+  # categories
   APP_STORE_URL       = "http://itunes.apple.com/genre/ios-education/id6017?mt=8&letter=%s&page=%d"
-  NEXT_AVAILABLE      = "//ul[@class='list paginate']/li/a[@class='paginate-more']" 
+  # Xpath query to determine if there is another page in the itunes list of apps
+  NEXT_AVAILABLE      = "//ul[@class='list paginate']/li/a[@class='paginate-more']"
+  # Xpath query to move cursor
   SCRAPE_START        = "div.grid3-column#selectedcontent"
+  # Xpath query to get the app ID
   SCRAPE_QUERY        = "//div[@id='selectedcontent']/div/ul/li/a[contains(@href, 'id')]"
+  # Regex to get the ID of an app
   APP_ID_REGEX        = /\/id(.*)\?/
+  # URL for the iTunes lookup API. Parameters are app ID and country code
+  # country code can be 'us' or 'ca' or any other 2 letter country code
   ITUNES_LOOKUP_URL   = "http://itunes.apple.com/lookup?id=%s&country=%s"
+  # Apple's field that indicates how many results were fetched in the lookup API
   RESULT_COUNT        = "resultCount"
   
-  # RSS Feed links
-  RSS_LIMIT = 2
+  ### RSS Feed links
+  # Limit of RSS entries to request.
+  # 2 <= RSS_LIMIT < 300
+  # NOTE: RSS limit for new apps is always 100. They are not affected by this
+  # number because apple always returns the same amount of apps
+  RSS_LIMIT = 300
+  # List of RSS feed links 
   RSS_LINKS = [
     { :name => 'top_free_apps_iphone',  :url => 'http://itunes.apple.com/%s/rss/topfreeapplications/limit=%d/genre=6017/json' },
     { :name => 'top_paid_apps_iphone',  :url => 'http://itunes.apple.com/%s/rss/toppaidapplications/limit=%d/genre=6017/json' },
@@ -41,15 +71,18 @@ module ScraperConstants
     { :name => 'top_free_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/topfreeipadapplications/limit=%d/genre=6017/json' },
     { :name => 'top_paid_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/toppaidipadapplications/limit=%d/genre=6017/json' },
     { :name => 'top_gros_apps_ipad',    :url => 'http://itunes.apple.com/%s/rss/topgrossingipadapplications/limit=%d/genre=6017/json' },
-    #{ :name => 'new_apps',              :url => 'http://itunes.apple.com/%s/rss/newapplications/limit=%d/genre=6017/json' },
-    #{ :name => 'new_free_apps',         :url => 'http://itunes.apple.com/%s/rss/newfreeapplications/limit=%d/genre=6017/json' },
-    #{ :name => 'new_paid_apps',         :url => 'http://itunes.apple.com/%s/rss/newpaidapplications/limit=%d/genre=6017/json' }
+    { :name => 'new_apps',              :url => 'http://itunes.apple.com/%s/rss/newapplications/limit=%d/genre=6017/json' },
+    { :name => 'new_free_apps',         :url => 'http://itunes.apple.com/%s/rss/newfreeapplications/limit=%d/genre=6017/json' },
+    { :name => 'new_paid_apps',         :url => 'http://itunes.apple.com/%s/rss/newpaidapplications/limit=%d/genre=6017/json' }
   ]
+  # XML Namespace that apple uses for the RSS feeds. Need to pass this
+  # namespace in order to do an XML search.
   RSS_NAMESPACES  = {'a' => 'http://www.w3.org/2005/Atom', 'im' => 'http://itunes.apple.com/rss'}
+  # Xpath query to search for app ids on the RSS feeds
   RSS_XPATH       = '//a:id[@im:id]'
   
-  # List of stores, to enable remove comment from the line and add 
-  # the corresponding apple store code 
+  # List of stores with their corresponding name, itunes store id and country code.
+  # To enable remove comment from the line and add the corresponding country code 
   STORES = [
   { :name => 'United States',        :id => 143441,   :code => 'us'},
   { :name => 'Canada',               :id => 143455,   :code => 'ca'}

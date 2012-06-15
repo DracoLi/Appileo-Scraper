@@ -3,69 +3,84 @@ module ScraperWorker
   # Constants
   include ScraperConstants
 
-  # Store the list of all the apps with their respective IDs
+  # Scrape all the apps.
+  # Returns a hash that contains the itunes information per store
+  # and their respective reviews.
   def self.scrape_all()
   
+    # Initialize variables
     apps = Hash.new
-    app_ids = Hash.new
-  
-    # TODO: REMOVE - Time benchmark for performance
-    start_time = Time.now if DEBUG
-  
-    # TODO: REPLACE upto("A") with ("Z") to scrape all apps
-    "A".upto("A") {
-      |letter|
-      app_ids.merge!(scrape_letter(letter))
-    }
+    
+    # Iterate through every letter and scrape
+    "A".upto("Z") do |letter|
+      apps.merge!(scrape_letter(letter))
+    end
     
     # Scrape apps that start with numbers too
-    app_ids.merge!(scrape_letter("*"))
+    apps.merge!(scrape_letter("*"))
     
+    return apps
+  end
+  
+  # Scrape only apps that start with the given letter.
+  # Returns a hash that contains the itunes information per store
+  # and their respective reviews.
+  def self.scrape_letter(letter)
+    
+    # Initialize variables
+    apps = Hash.new
+    app_ids = Hash.new
+    app_count = 0 # How many apps we have processed so far
+  
     # We are only interested in the apps ID
-    app_ids = app_ids.keys
+    app_ids = get_apps_per_letter(letter)
     
-    # How many apps we have processed so far
-    app_count = 0
+    # Iterate through every app and scrape
+    (app_ids).each do |app_id|
     
-    (app_ids).each do |app|
-    
-      # Initialize variables
-      apps[app] = Hash.new
-      apps[app][:result] = Hash.new
-      apps[app][:reviews] = Hash.new
-    
-      # Get app information and reviews for each store
-      (STORES).each do |store|
-      
-        # Make a call to the itunes API
-        apps[app][:result][store[:code]] = itunes_lookup(app, store[:code])
-        
-        # Get the app reviews
-        apps[app][:reviews][store[:code]] = fetch_reviews(app, store[:id])
-      
-      end
-      
+      apps[app_id] = scrape_app(app_id)
       app_count += 1
       
       #TODO: REMOVE -- for testing only
       break if (DEBUG and app_count >= DEBUG_MAX_APPS)
       
     end
-
-    if DEBUG
-      exec_time = Time.now - start_time
-      puts "Execution time #{exec_time} seconds."
-    end
     
     return apps
   end
-
-
-  # Retrieves the list of apps for a given letter
-  # Letters can be A-Z or * for apps that start with a number
-  def self.scrape_letter(letter)
   
-    apps_for_letter = Hash.new
+  # Scrape only the app specified by app_id
+  # Returns a hash that contains the itunes information per store
+  # and their respective reviews
+  def self.scrape_app(app_id)
+    
+    # Initialize variables
+    app = Hash.new
+    
+    # Initialize variables
+    app[:result] = Hash.new
+    app[:reviews] = Hash.new
+    
+    (STORES).each do |store|
+      
+        # Make a call to the itunes API
+        app[:result][store[:code]] = itunes_lookup(app_id, store[:code])
+        
+        # Get the reviews
+        #app[:reviews][store[:code]] = fetch_reviews(app_id, store[:id])
+      
+      end
+      
+    return app
+  end
+
+
+  # Retrieves the list of apps with their respective IDs for a given letter
+  # Letters can be A-Z or * for apps that start with a number.
+  def self.get_apps_per_letter(letter)
+  
+    # Initialize variables
+    apps_for_letter = []
   
     # Make sure our letter is capitalized, 
     # otherwise scraper URL will be malformed
@@ -82,8 +97,6 @@ module ScraperWorker
       # Format URL
       url = APP_STORE_URL % [letter, page]
       
-      #puts url if DEBUG
-      
       # Open and parse URL
       doc = Nokogiri::HTML(open(url))
       
@@ -99,11 +112,8 @@ module ScraperWorker
         # Get the href attribute
         href = node[HREF]
         
-        # use a regex to get the ID
-        app_id = APP_ID_REGEX.match(href)[1]
-        
-        # Add the ID to the Hash
-        apps_for_letter[app_id] = 1
+        # use a regex to get the ID and add it to the array
+        apps_for_letter << APP_ID_REGEX.match(href)[1]
       end
       
       # Move on to the next page
@@ -115,54 +125,47 @@ module ScraperWorker
     end
     
     #TODO: REMOVE - For testing only
-    if DEBUG
-      puts "apps scraped for letter %s: %d" % [letter, apps_for_letter.keys.length]
-      puts ""
-    end
+    puts "apps scraped for letter %s: %d" % [letter, apps_for_letter.length] if DEBUG
     
     # return the list of apps for the given letter
     return apps_for_letter
   end
   
-  
   # Use itunes search API to get app information
+  # country_code should be "us" or "ca" or any other country code
   def self.itunes_lookup(app_id, country_code)
+    
+    # format URL 
     url = ITUNES_LOOKUP_URL % [app_id, country_code]
     
     # make the API call
     result = JSON.parse(open(url).read)
     
-    # Determine if the app was found
-    total = result[RESULT_COUNT]
-    
-    if total == 0
-      puts "Couldn't find app " + app_id.to_s if DEBUG
+    # Return based on if the app was found
+    if result[RESULT_COUNT] == 0
+      puts "Couldn't find app: %s in store: %s" % [app_id.to_s, country_code] if DEBUG 
       return {}
     else
-    
-      #puts result['results'][0]['screenshotUrls']
-      #puts "app name: %s, url: %s" % [result['results'][0]['trackName'], url] if DEBUG
-    
       return result['results'][0]
     end
+    
   end
   
-  
-  # return a rating/subject/author/body hash array with the reviews
+  # Get reviews for a given app in the specified country.
+  # store_id is the iTunes code for a given country store
+  # Return a rating/subject/author/body hash array with the reviews.
   def self.fetch_reviews(app_id, store_id)
+    
+    # Initialize variables
     reviews = []
-    
-    # Page number
-    page = 0
-    
     more_available = true
+    page = 0 # Page number
     
+    # Loop while there are more reviews available
     while more_available
     
       # Create curl command
       cmd = REVIEW_CURL_CMD % [store_id, app_id, page]
-      
-      #puts cmd if DEBUG
       
       # Execute the command and get the XML
       rawxml = `#{cmd}`
@@ -173,6 +176,7 @@ module ScraperWorker
       # Avoid an infinite loop by assuming there are no more reviews available
       more_available = false
       
+      # Iterate through each review
       doc.search(REVIEW_QUERY, REVIEW_NAMESPACE).each do |node|
         review = {}
         
@@ -195,22 +199,20 @@ module ScraperWorker
       end
       
       page += 1
-      
-      #puts "page: %d, reviews so far: %d" % [page, reviews.length] if DEBUG 
     end
     
-    if DEBUG
-      puts "Got %d reviews for app: %s in store %s" % [reviews.length, app_id, store_id]
-      puts ""
-    end
+    #TODO: REMOVE - For testing only
+    puts "Got %d reviews for app: %s in store %s" % [reviews.length, app_id, store_id] if DEBUG
     
     return reviews
   end
   
   
+  # Reads information from the different iTunes RSS feeds
   # Returns a hash of app IDs with their given rank per category
   def self.get_rankings()
   
+    # Initialize variables
     apps = {}
     
     # Get rankings per store
@@ -230,10 +232,8 @@ module ScraperWorker
         # Read and parse the JSON RSS feed
         result = JSON.parse(open(url).read)
         
-        if DEBUG
-          #puts "parsing url %s" % url  
-          #puts result['feed']['entry'].length
-        end
+        #TODO: REMOVE - For testing only
+        puts "parsing category %s. Found %d results for country %s" % [link[:name], result['feed']['entry'].length, store[:code]] if DEBUG
         
         result['feed']['entry'].each do |entry|
           
@@ -257,6 +257,3 @@ module ScraperWorker
   end
   
 end
-
-a = ScraperWorker.get_rankings
-
