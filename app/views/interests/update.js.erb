@@ -1,0 +1,10 @@
+$('#interests .form-actions input.disabled')
+  .removeClass('disabled').attr('value', "Save Changes");
+
+// Notify user that stuff is saved
+noty({
+  text: 'All Interests Saved!',
+  layout: 'topCenter',
+  type: 'success',
+  theme: 'noty_theme_twitter'
+});

@@ -1,0 +1,68 @@
+@import "bootstrap";
+
+/* Variables, mixins */
+$grayMediumLight: #eaeaea;
+
+@mixin box_sizing {
+  -miz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+/* footer */
+footer {
+  margin-top: 45px;
+  padding-top: 5px;
+  border-top: 1px solid $grayMediumLight;
+  color: $grayLight;
+  a {
+    color: $gray;
+    
+    &:hover {
+      color: $grayDarker;
+    }
+  }
+  
+  small { float: left; }
+}
+
+/* forms */
+input, textarea, select, .uneditable-input {
+  border: 1px solid #bbb;
+  width: 100%;
+  padding: 10px;
+  height: auto;
+  margin-bottom: 15px;
+  @include box_sizing;
+}
+
+#error_explaination {
+  color: #f00;
+  ul {
+    list-style: none;
+    margin: 0 0 18px 0;
+  }
+}
+
+.field_with_errors {
+  @extend .control-group;
+  @extend .error;
+}
+
+/* general */
+.clearfix {
+  @include clearfix;
+}
+
+.float-left {
+  float: left;
+}
+
+/* Others */
+.debug_dump {
+  clear: both;
+  float: left;
+  width: 100%;
+  margin-top: 45px;
+  @include box_sizing;
+}

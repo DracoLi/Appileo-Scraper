@@ -32,4 +32,15 @@ Appileo::Application.routes.draw do
         :via => [:get],
         :as => :home
 
+
+  # Category and interest editors
+  match "/categories", to: 'categories#index'
+  match "/update", to: 'categories#update', via: :post
+  match "/destroy", to: 'categories#destroy', via: :delete
+  match "/categories/raw", to: 'categories#raw'
+
+  match "/interests", to: 'interests#index'
+  match "/interests_update", to: 'interests#update', via: :post
+  match "/interests_destroy", to: 'interests#destroy', via: :delete
+  match "/interests/raw", to: 'interests#raw'
 end

@@ -1,0 +1,21 @@
+<% provide(:title, "Categories")%>
+
+<header>
+  <h1><%= yield(:title) %> | Appileo</h1>
+</header>
+
+<div class="alert alert-info" id="notice">
+  <strong>Note:</strong> For keywords, only enter the singular form.
+</div>
+
+<section id="add-category">
+  <button class="btn btn-large btn-primary" id="addCategory">
+    <i class="icon-plus icon-white"></i>
+    Add New Category
+  </button>
+</section>
+<section id="categories">
+  <% @all_categories.each_pair do |cat_name, cat_value| %>
+    <%= render 'category', name: cat_name, value: cat_value %>
+  <% end %>
+</section>

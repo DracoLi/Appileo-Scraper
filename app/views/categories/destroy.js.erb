@@ -1,0 +1,7 @@
+$('#categories .category').each(function(index, elem) {  
+  console.log($(elem).find('.cat-name').html());
+  if ($(elem).find('.cat-name').html() == "<%= escape_javascript(@cat_name) %>") {
+    $(elem).remove();
+  }
+});
+console.log('destroyed');
