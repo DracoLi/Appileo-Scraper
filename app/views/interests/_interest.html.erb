@@ -1,0 +1,15 @@
+<tr>
+  <td>
+    <div class="editable int-name"><%= name %></div>
+  </td>
+  <td>
+    <div class="btn-group int-gender" data-toggle="buttons-radio">
+      <button class="btn <%= "active" if value["gender"] == "Male" %>">Male</button>
+      <button class="btn <%= "active" if value["gender"] == "Both" %>">Both</button>
+      <button class="btn <%= "active" if value["gender"] == "Female" %>">Female</button>
+    </div>
+  </td>
+  <td>
+    <input class="tags" data-target="<%= "#{to_camel(name)}_matches" %>" value="<%= value["matches"].join(",") %>" />
+  </td>
+</tr>

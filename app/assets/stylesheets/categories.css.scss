@@ -1,0 +1,102 @@
+// Place all the styles related to the categories controller here.
+// They will automatically be included in application.css.
+// You can use Sass (SCSS) here: http://sass-lang.com/
+
+@import "bootstrap";
+
+.container {
+  header {
+    margin-bottom: 40px;
+    margin-top: 20px;
+    color: $grayDarker;
+  }
+
+  #add-category {
+    margin: 20px 0;
+  }
+
+  #notice {
+
+  } 
+}
+
+.category, #interests {
+  
+  margin-bottom: 50px;
+  
+  h2 {
+    margin-bottom: 10px;
+    color: $blue;
+    
+    input {
+      font-size: 24px;
+      line-height: 36px;
+      color: $blue;
+      font-weight: bold;
+    }
+  }
+  
+  tr td {
+    font-weight: bold;
+    
+    &:first-child {
+      width: 200px;
+      
+      input {
+        font-size: 13px;
+        font-weight: bold;
+        line-height: 18px;
+      }
+    }
+  }
+  
+  input {
+    font-weight: normal;
+  }
+  
+  .main-cat {
+
+    tr th:first-child {
+      vertical-align: top;
+    }
+
+    tr th {
+
+      &:first-child {
+        font-size: 18px;
+        width: 215px;
+      }
+    }
+  }
+  
+  .sub-cat {
+    th { 
+      font-size: 14px;
+      
+      &:first-child {
+        width: 216px;
+      }
+    }
+  }
+  
+  .add-sub {
+    
+  }
+  
+  .form-actions {
+    margin-top: 30px;
+    
+    form {
+      float: left;
+      margin: 0;
+      margin-left: 20px;
+      
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+  }
+  
+}
+
+

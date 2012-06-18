@@ -1,0 +1,18 @@
+$('#categories .category').each(function(index, elem) {
+  console.log('Updating...');
+  if ($(elem).find('.cat-name').html() == "<%= escape_javascript(@cat_name) %>") {    
+    // Restore submit button state
+    $(elem).find('input.disabled').removeClass('disabled').attr('value', "Save Changes");
+    
+    // Update original name since its been updated
+    $(elem).find('input[name="original_name"]').attr('value', '<%= escape_javascript(@cat_name) %>')
+  }
+});
+
+// Notify user that stuff is saved
+noty({
+  text: 'Category Saved!',
+  layout: 'topCenter',
+  type: 'success',
+  theme: 'noty_theme_twitter'
+});

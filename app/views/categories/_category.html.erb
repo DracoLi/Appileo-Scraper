@@ -1,0 +1,62 @@
+<div class="category">
+  <hr />
+  <h2 class="editable cat-name"><%= name %></h2>
+  <table class="table main-cat">
+    <thead>
+      <tr>
+        <th>Matches</th>
+        <th>
+          <input class="tags" value="<%=h value["matches"].join(",") %>" />
+        </th>
+      </tr>
+    </thead>
+  </table>
+
+  <table class="table sub-cat">
+    <thead>
+      <tr>
+        <th>Subcategories</th>
+        <th>Matches</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% value["subcats"].each_pair do |sub_name, sub_value| %>
+        <tr>
+          <td>
+            <div class="editable sub-name"><%= sub_name %></div>
+          </td>
+          <td>
+            <input class="tags" data-target="<%= "#{to_camel(sub_name)}_matches" %>" value="<%= sub_value["matches"].join(",") %>" />
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <button class="add-sub btn">
+    <i class="icon-plus"></i>
+    Add Subcategory
+  </button>
+
+  <div class="form-actions">
+    <%= form_tag(update_path, method: :post, remote: true) do %>
+      <div class="hidden-attributes">
+        <%= hidden_field_tag 'original_name', name, id: nil %>
+        <%= hidden_field_tag 'name', name, id: nil %>
+        <%= hidden_field_tag 'sub_names', value["subcats"].keys.join(","), id: nil %>
+        <%= hidden_field_tag 'matches', value["matches"].join(","), id: nil %>
+        <% value["subcats"].each_pair do |sub_name, sub_value| %>
+          <%= hidden_field_tag "#{to_camel(sub_name)}_matches", sub_value["matches"].join(","), id: nil %>
+        <% end %>
+      </div>
+      <%= submit_tag 'Save Changes', class: "btn btn-primary", name: "save" %>
+    <% end %>
+  
+    <%= form_tag(destroy_path, method: :delete, remote: true) do %>
+      <div class="hidden-attributes">
+        <%= hidden_field_tag 'original_name', name, id: nil %>
+        <%= hidden_field_tag 'name', name, id: nil %>
+      </div>
+      <%= submit_tag 'Delete Category', confirm: "Are you sure?", class: "btn btn-danger", name: "delete" %>
+    <% end %>
+  </div>
+</div>

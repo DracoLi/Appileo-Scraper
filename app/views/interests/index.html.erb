@@ -1,0 +1,44 @@
+<% provide(:title, "Interests")%>
+
+<header>
+  <h1><%= yield(:title) %> | Appileo</h1>
+</header>
+
+<div class="alert alert-info" id="notice">
+  <strong>Note:</strong> For keywords, only enter the singular form.
+</div>
+
+<section id="interests">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Interests</th>
+        <th>Gender</th>
+        <th>Matches</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @all_interests.each_pair do |name, value| %>
+        <%= render 'interest', name: name, value: value %>
+      <% end %>
+    </tbody>
+  </table>
+  <button class="add-int btn">
+    <i class="icon-plus"></i>
+    Add Interest
+  </button>
+  <div class="form-actions">
+    <%= form_tag(interests_update_path, method: :post, remote: true) do %>
+      <div class="hidden-attributes">
+        <%= hidden_field_tag 'int_names', @all_interests.keys.join(","), id: nil %>
+        <% @all_interests.each_pair do |name, value| %>
+          <%= hidden_field_tag "#{to_camel(name)}_gender", value["gender"], id: nil %>
+        <% end %>
+        <% @all_interests.each_pair do |name, value| %>
+          <%= hidden_field_tag "#{to_camel(name)}_matches", value["matches"].join(","), id: nil %>
+        <% end %>
+      </div>
+      <%= submit_tag 'Save Changes', class: "btn btn-primary", name: "save" %>
+    <% end %>
+  </div>
+</section>
