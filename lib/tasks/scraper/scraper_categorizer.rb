@@ -76,7 +76,6 @@ module ScraperCategorizer
     
     # If category found check for subcategory
     if category != nil
-      puts category
       # Get the sub categories for highest ranked category
       sub_categories = categories[category][SUB_CAT]
       sub_category = keyword_match(app, sub_categories)[0]
