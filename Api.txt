@@ -9,7 +9,7 @@ http://www.appileo.com/{method}?(/{device}/?({category}))
 
 method => ['top', 'new', 'lookup']
 device => ['iphone', 'ipad']
-category => ['free', 'paid', 'grossing']
+category => ['free', 'paid', 'gros']
 
 
 LOOKUP:
@@ -18,35 +18,32 @@ LOOKUP:
 =>http://www.appileo.com/lookup?
 
 Parameters:
-app_id					'12345'
-title					'Lord of the rings'
-publisher				'Hyper H Labs'
-category				'?'
-price					'0.99'								
-min_price				'1.99'
-max_price				'9.00'
-region					'CA'
-application ratings		'5'
-device					'iphone'
+a_id					'12345'
+name					'Lord of the rings'
+p_id                    '54321'
+publisher               'Hyper H Labs'
+country                 'CA'
+device                  'iphone'
+min_price               '1.99'
+max_price               '9.00'
+min_app_rating          '3'
+max_app_rating          '4.5'
 
 
 TOP/NEW:
 ========
 
-=> http://www.appileo.com/top/iphone/free
-Retrieves top 500 iPhone free apps
+=> http://www.appileo.com/top/ca/iphone/free
+Retrieves top 300 iPhone free apps for the Canadian store
 
-=> http://www.appileo.com/top/ipad/paid
-Retrieves top 500 iPhone paid apps
+=> http://www.appileo.com/top/ca/ipad/paid
+Retrieves top 300 iPad paid apps for the Canadian store
 
-=> http://www.appileo.com/top/iphone/grossing
-Retrieves top 500 iPhone grossing apps
+=> http://www.appileo.com/top/us/iphone/gros
+Retrieves top 300 iPhone grossing apps for the US store
 
-=> http://www.appileo.com/new/ipad/free
-Retrieves new iPad free apps
+=> http://www.appileo.com/new/ca/free
+Retrieves 100 newest free apps for the Canadian store
 
-=> http://www.appileo.com/new/ipad/
-Retrieves new iPad apps
-
-=> http://www.appileo.com/top/iphone/
-Retrieves top 500 iPhone apps
+=> http://www.appileo.com/new/us/
+Retrieves 100 newest apps for the US store
