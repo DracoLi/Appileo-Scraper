@@ -1,197 +1,216 @@
 require 'scraper_worker.rb'
+require 'optparse'
 
 module Scraper
 
   include ScraperWorker
+  include ScraperCategorizer
+  
+  # Define the maximum rating from the app store for the categorization
+  MAX_RATING = 5
+  
+  # This method calculates the weight of the apps
+  def self.calculate_weight(gamma)
+    apps = AppData.all
+    # Get the top number of ratings and convert to integer in case it's none
+    top_ratings_count = AppData.sort(:total_ratings_count).last.total_ratings_count.to_i
+    
+    # Run over all apps and calculate the weighted average
+    apps.each do |app|
+      # Make sure that the result saved are float
+      x = app.total_ratings_count.to_f / top_ratings_count
+      y = app.total_average_rating.to_f / MAX_RATING
+      new_weight = gamma*x + (1-gamma)*y
+      
+      app.weight = new_weight
+      app.save() if app.changed? && app.valid?
+    end
+    
+    puts "Done calculated new weights for apps"
+    
+  end
+  
   # Method that processes the AppData Document with the data provided
   # Returns true if changes were made and later save is needed
   # false otherwise
-  def self.app_data_processor(app, data)
+  def self.app_processor(app, data)
     # Flag to mark if object was created or updated and
     # needs to be saved, written, to the db afterwards
     save_needed = false
 
-    # Handle special case for supported devices if 'all'
-    if data['supportedDevices'] == nil
-      supported_devices = ['iphone', 'ipad']
-    elsif (data['supportedDevices'] - ['all'] == [])
-      supported_devices = ['iphone', 'ipad']
-    else
-      supported_devices = data['supportedDevices']
-    end
-
     # Create hash with all values to be checked
-    attributes = {:a_id => data['trackId'],
-                  :bundle_id => data['bundleId'],
-                  :name => data['trackName'],
-                  :summary => data['description'],
-                  :devices => supported_devices,
-                  :advisory => data['contentAdvisoryRating'],
-                  :game_center => data['isGameCenterEnabled'],
-                  :size => data['fileSizeBytes'],
-                  :lang => data['languageCodesISO2A'],
-                  :version => data['version'] }
-
-    app.attributes = attributes
-
+    attributes = {
+      # App
+      :a_id => data['trackId'].to_f,
+      :bundle_id => data['bundleId'],
+      :name => data['trackName'],
+      :summary => data['description'],
+      :devices => data['supportedDevices'],
+      :advisory => data['contentAdvisoryRating'],
+      :game_center => data['isGameCenterEnabled'],
+      :size => data['fileSizeBytes'].to_i,
+      :lang => data['languageCodesISO2A'],
+      :version => data['version'],
+                  
+      #Store
+      :country => data['store'],
+      :release_date => data['releaseDate'],
+      :link => data['trackViewUrl'],
+      
+      :total_ratings_count => data['userRatingCount'].to_i,
+      :total_average_rating => data['averageUserRating'].to_f,
+      :current_ratings_count => data['userRatingCountForCurrentVersion'].to_i,
+      :current_average_rating => data['averageUserRatingForCurrentVersion'].to_f,           
+                  
+      # Price            
+      :amount => data['price'].to_f,
+      :currency => data['currency'],
+      
+      # Publisher       
+      :pub_id => Float(data['artistId']).to_f,
+      :pub_name => data['artistName'],
+      :pub_company => data['sellerName'],
+      :pub_link => data['artistViewUrl'],
+      
+      # Pics
+      :pic_iphone => data['screenshotUrls'],
+      :pic_ipad => data['ipadScreenshotUrls'],
+      :pic_icon60 => data['artworkUrl60'],
+      :pic_icon100 => data['artworkUrl100'],
+      :pic_icon512 => data['artworkUrl512']
+    }
+    
+    if app == nil
+      # If app is nil, create a new one
+      app = AppData.new(attributes)
+      #puts AppData.name + ": Data needs to be created"
+    else
+      # Assign the new set of attributes
+      app.attributes = attributes
+    end
+      
+    # Check if app is valid with the new set of attributes
     if app.invalid?
       # Check if app_data attributes are valid otherwise inform about errors
-      puts AppData.name + ": Error validating data"
+      #puts AppData.name + ": Error validating data"
       app.errors.each { |error, message| puts "-> #{error}: #{message}" }
+      return [false, app]
     else
-    # If validation passed, check if needs to save
+      # If validation passed, check if needs to save
       if app.changed?
-        save_needed = true
-        puts AppData.name + ": Data needs to be updated"
+        #puts AppData.name + ": Data needs to be updated"
+        return [true, app]
+      else
+        # Nothing to change
+        #puts AppData.name + ": Data up to date"
+        return [false, app]
       end
     end
-
-    return save_needed
-  end
-
-  # Creates of update an object, which is of type model class,
-  # with the provided list of attributes.
-  # The method returns an array of two items, the first is a
-  # boolean if the object requires future save to the database
-  # and the second is the object itself in order to allow to
-  # assign to a parent object later
-  def self.create_or_update_object(object, model, attributes)
-
-    if object == nil
-      # If object is nil, create a new one
-      object = model.new(attributes)
-      puts model.name + ": Data needs to be created"
-      return [true, object]
-    else
-    # If object exists already, check if there are differences
-    # in the values provided
-      hash_diff_keys =  attributes.diff(object.attributes).keys
-      hash_diff_keys.each do |key|
-        if attributes.keys.include?(key)
-          # If one of the keys needed to be updated,
-          # update the whole structure and mark for saving
-          object.attributes = attributes
-          puts model.name + ": Data needs to be updated"
-          return [true, object]
-        end
-      end
-    end
-    return [false, object]
-  end
-
-  # Method that processes the Publisher Embedded Document
-  # inside AppData 'app' with the data provided
-  # Returns true if changes were made and later save is needed
-  # false otherwise
-  def self.publisher_data_processor(app, data)
-    # Create hash with all values to be checked
-    # Keys have to be in 'string' format instead of :string
-    # in order to be able to match the keys to the ones
-    # returned in the data using 'diff' on the hashes
-    attributes = {'p_id' => Float(data['artistId']),
-                  'name' => data['artistName'],
-                  'company' => data['sellerName'] }
-
-    # Return boolean marking if object was created or updated and
-    # needs to be saved, written, to the db afterwards
-    save_needed, app.publisher = create_or_update_object(app.publisher, Publisher, attributes)
-    return save_needed
-  end
-
-  # Method that processes the Pics Embedded Document
-  # inside AppData 'app' with the data provided
-  # Returns true if changes were made and later save is needed
-  # false otherwise
-  def self.pics_data_processor(app, data)
-    # Create hash with all values to be checked
-    # Keys have to be in 'string' format instead of :string
-    # in order to be able to match the keys to the ones
-    # returned in the data using 'diff' on the hashes
-    attributes = {'iphone' => data['screenshotUrls'],
-                  'ipad' => data['ipadScreenshotUrls'],
-                  'icon60' => data['artworkUrl60'],
-                  'icon100' => data['artworkUrl100'],
-                  'icon512' => data['artworkUrl512'] }
-
-    # Return boolean marking if object was created or updated and
-    # needs to be saved, written, to the db afterwards
-    save_needed, app.pics = create_or_update_object(app.pics, Pics, attributes)
-    return save_needed
   end
   
   # Method that processes the Reviews Embedded Document
-  # inside Store inside AppData 'app' with the data provided
+  # inside AppData 'app' with the data provided
   # Returns true if changes were made and later save is needed
   # false otherwise
-  def self.reviews_data_processor(app, store_index, store_reviews)
-    # Create hash with all values to be checked
-    # Keys have to be in 'string' format instead of :string
-    # in order to be able to match the keys to the ones
-    # returned in the data using 'diff' on the hashes
+  def self.reviews_data_processor(app, reviews)
     
-    # If there are reviews, get the latest review datetime
-    # in order to make sure to insert only the ones that were
-    # recorded afterwards 
+    # Keep a reference to the last day of the reviews that are already saved
+    # internally in the database. This will allow us to add all later reviews,
+    # and check only the last date for additional reviews that do not exist
     last_date = nil
-    if !app.store[store_index].review.empty?
-      app.store[store_index].review.each do |review|
-        # TODO: check why some apps return with no date
+    if !app.review.empty?
+      #puts Review.name + ": Found internal reviews"
+      if reviews == nil
+        # If reviews were previously recorded and no results scrapped
+        # remove all reviews from file
+        #puts Review.name + ": Removing all previous reviews since empty set scrapped"
+        app.review.clear
+        return true
+      end
+      # If there are reviews, get the latest review datetime
+      # in order to make sure to insert only the ones that were
+      # recorded afterwards
+      app.review.each do |review|
         last_date = review.date if last_date == nil || (review.date != nil && review.date > last_date)
       end
+    elsif reviews == nil || reviews.length == 0
+      # If no reviews previously recorded and no results scrapped, nothing to change.
+      #puts Review.name + ": No external reviews found"
+      return false
     end
+    
+    #puts Review.name + ": Found extrenal reviews"
     
     # Keep flag if save is needed
     save_needed = false
     
     # Iterate through all reviews
-    store_reviews.each do |review|
-      # TODO: make sure there will be no duplicates in reviews
-      if (review[:date] != nil) && (last_date == nil || Date.parse(review[:date]) > last_date) 
+    reviews.each do |review|
+      # Create hash with all values to be checked
+      # Keys have to be in 'string' format instead of :string
+      # in order to be able to match the keys to the ones
+      # returned in the data using 'diff' on the hashes
+      attributes = {
+        'body' => review['body'],
+        'subject' => review['subject'],
+        'rating' => review['rating'],
+        'author' => review['author'],
+        'version' => review['version'],
+        'date' => review['date']
+      }
+      
+      # Initialize flag to add the review later
+      add_review = false                
+      
+      if (review['date'] != nil) && (last_date == nil || Date.parse(review['date']) > last_date) 
         # If review was recorded later then the latest review,
-        # add it to the database, otherwise ignore
-        attributes = {:body => review[:body],
-                      :subject => review[:subject],
-                      :rating => review[:rating],
-                      :author => review[:author],
-                      :version => review[:version],
-                      :date => review[:date] }
-                      
-        puts Review.name + ": Data needs to be created"
-        app.store[store_index].review << Review.new(attributes)
-        save_needed = true
-      end
-    end     
-    
-    return save_needed
-    
-  end
-  
-  # Method that processes the Price Embedded Document
-  # inside Store inside AppData 'app' with the data provided
-  # Returns true if changes were made and later save is needed
-  # false otherwise
-  def self.price_data_processor(app, store_index, data)
-    # Create hash with all values to be checked
-    # Keys have to be in 'string' format instead of :string
-    # in order to be able to match the keys to the ones
-    # returned in the data using 'diff' on the hashes
-    
-    attributes = {'amount' => data['price'],
-                  'currency' => data['currency'] }
+        # mark save needed in order to add it to the database
+        add_review = true
+      elsif (review['date'] != nil) && (last_date == nil || Date.parse(review['date']) == last_date)
+        # If review was recorded at the same day as the latest review,
+        # check if the values already exists, otherwise mark save needed
+        # in order to add it to the database
+        
+        # keep flag if exact review was found
+        review_found = false
+        app.review.each do |app_review|
+          # Check if there is a review with exactly the same attributes
+          hash_diff_keys =  attributes.diff(app_review.attributes).keys
+          
+          # Clean for Ruby Attributes
+          # NOTE: If changes are made to the REVIEW model, changes might be
+          # requried to be introduced here as well
+          hash_diff_keys.delete('_id')
+          hash_diff_keys.delete('created_at')
+          hash_diff_keys.delete('updated_at')
 
-    # Return boolean marking if object was created or updated and
-    # needs to be saved, written, to the db afterwards
-    save_needed, app.store[store_index].price = 
-      create_or_update_object(app.store[store_index].price, Price, attributes)
+          if (hash_diff_keys.length == 0)
+            review_found = true
+            break
+          end
+        end
+        
+        # If no review was found, save the new one
+        if !review_found
+          add_review = true  
+          save_needed = true
+        end 
+      end
+      
+      if add_review
+        app.review << Review.new(attributes)
+      end
+    end
     
     return save_needed
+    
   end
   
   # Method that processes the Rank Embedded Document
   # inside Store inside AppData 'app' with the data provided
   # Returns true if changes were made and later save is needed
   # false otherwise
-  def self.rankings_data_processor(app, store_index, ranking)
+  def self.rankings_data_processor(app, ranking)
     # Create hash with all values to be checked
     # Keys have to be in 'string' format instead of :string
     # in order to be able to match the keys to the ones
@@ -221,192 +240,297 @@ module Scraper
                     'new_free_apps' => nil }  
     end
     
-    # Return boolean marking if object was created or updated and
-    # needs to be saved, written, to the db afterwards
-    save_needed, app.store[store_index].rank = 
-      create_or_update_object(app.store[store_index].rank, Rank, attributes)
-    
-    return save_needed
-  end
-
-  def self.store_data_processor(app, store_index, country, data, store_reviews, ranking)
-  
-    attributes = {:country => country,
-                  :release_date => data['releaseDate'],
-                  :link => data['trackViewUrl'],
-                  :publisher_link => data['artistViewUrl'],
-                  :total_ratings_count => data['userRatingCount'],
-                  :total_average_rating => data['averageUserRating'],
-                  :current_ratings_count => data['userRatingCountForCurrentVersion'],
-                  :current_average_rating => data['averageUserRatingForCurrentVersion'] }
-
-    if store_index == nil
-      puts Store.name + ": Data needs to be created"
-      app.store << Store.new(attributes)
-      save_needed_store = true
+    app.attributes = attributes
       
-      # Get the store index after creation
-      app.store.each_index do |i|
-        store_index = i if app.store[i].country == country
-      end
+    # Check if app is valid with the new set of attributes
+    if app.invalid?
+      # Check if app_data attributes are valid otherwise inform about errors
+      #puts AppData.name + ": Error validating data for Ranking"
+      app.errors.each { |error, message| puts "-> #{error}: #{message}" }
+      return [false, app]
     else
-      # If object exists already, check if there are differences
-      # in the values provided
-      save_needed_store, app.store[store_index] =
-        create_or_update_object(app.store[store_index], Store, attributes)
+      # If validation passed, check if needs to save
+      if app.changed?
+        #puts AppData.name + ": Data needs to be updated for Ranking"
+        return [true, app]
+      else
+        # Nothing to change
+        #puts AppData.name + ": Data up to date for Ranking"
+        return [false, app]
+      end
     end
     
-    save_needed_price = price_data_processor(app, store_index, data)
-    #save_needed_reviews = reviews_data_processor(app, store_index, store_reviews)
-    save_needed_reviews = false
-    save_needed_rankings = rankings_data_processor(app, store_index, ranking)
-    
-    return save_needed_store || save_needed_price || save_needed_reviews || save_needed_rankings
-    
   end
 
-  # Processing the data for the whole AppData Document Model
-  # and its embedded models. Save only happens after the whole
-  # model has been processed and needs to be save because of
-  # creation of an object or update of attributes
-  def self.app_processor(app, data)
-
-    # Run all the processors on the Document and its EmbeddedDocuments
-    # check if any of them returned a flag that changes happended
-    save_needed_app = app_data_processor(app, data)
-    save_needed_publisher = publisher_data_processor(app, data)
-    save_needed_pics = pics_data_processor(app, data)
-
-    # If any of the data processors returned true tell that needs to be saved
-    return save_needed_app || save_needed_publisher || save_needed_pics
-
-  end
-
-  def self.scrape_apps(new_apps, rankings)
+  def self.scrape_apps(new_apps, rankings, categorize)
     
     # If scaper returned successfully, load all apps to memory
     # This allows comparisson without hitting the DB for every app
     # NOTE: If data goes above machine RAM, work has to be done in chunks
     # TODO: apps = AppData.all
+    
+    # Load the categories and interests to the memory in order not to
+    # read the files again and use it for all apps if categorization requested
+    categories = ScraperCategorizer.get_categories()
+    interests = ScraperCategorizer.get_interests()
 
     # Iterate on all apps that were retrieved
-    (new_apps).each do |app_id, app_data|
+    (new_apps).each do |app_data|
+      
+      # If app data didn't exist move to the next entry
+      if app_data == nil || app_data.empty? || !app_data.has_key?('trackId')
+        next
+      end
 
-      is_save_needed = false
-
-      stores_result = app_data[:result]
-      stores_reviews = app_data[:reviews]
-      #raise "ERROR: number of countries does not match in results and reviews" \
-      #  unless Integer(stores_result.length) == Integer(stores_reviews.length)       
-
-      # Run app specific processing that is not related to stores
-      puts "\nProcessing app id: " + app_id
-
+      # Get the app id and country that should be unique together      
+      app_id = Float(app_data['trackId'])
+      country = app_data['store']
+      puts "\nProcessing app id: " + String(app_data['trackId']) + " in " + country
+      
       # Try to get data from collection, otherwise create new one
       # note: this won't validate or save to database yet
-      app = AppData.find_or_initialize_by_a_id(Float(app_id))
-
-        
-      # Get first set of values from the 0 store since all
-      # stores hold the same generic values
-      found_country = nil
-      stores_result.each do |country, store_data|
-        if store_data != nil && !store_data.empty?
-          found_country = country
-          break
-        end  
-      end
+      app = AppData.find_all_by_a_id_and_country(app_id, country)
+      raise "Error: multiple results returned for app id : " + app_id + 
+            " and country " + country if app.length > 1 
       
-      if found_country != nil
-        data = stores_result[found_country]
+      # Run the processor in order to check for creation or update of values
+      # Init flag that marks if app needs to be saved back to database
+      is_save_needed_app = false
+      if app.length == 0
+        # If app not found, pass nil 
+        is_save_needed_app, app = app_processor(nil, app_data)
       else
-        break
+        # If app found, pass the app
+        is_save_needed_app, app = app_processor(app[0], app_data)
       end
-
-      is_save_needed = true if app_processor(app, data)
-
-      # Iterate on all stores that were scraped
-      (stores_result).each do |country, store_data|
-        if store_data == nil || store_data.empty?
-          next
-        end
       
-        store_data['trackId'] = app_id if store_data['trackId'] == nil
-        
-        raise "ERROR: app_id does not equal trackId, check mapping." \
-        unless Integer(app_id) == Integer(store_data['trackId'])
-        
-        # Find reviews from the same country
-        store_reviews = stores_reviews[country]
-
-        # Check if store exists, and if so if found. Otherwise pass nil
-        # in order to create a new store for the country
-        store_index = nil
-        if !app.store.empty?
-          # Searching array of stores in order not to hit the database again
-          # since queries on a document always have to hold the root.
-          # If database queries wanted, then it can be replaced with
-          # A.all(:conditions => {'b.c.name' => 'appileo'}) structure
-          # and raise "ERROR: multiple entries for the same countries
-          # were found. unless store.count == 1 can be added as a check
-          app.store.each_index do |i|
-            store_index = i if app.store[i].country == country
-          end
-        end
+      # Get review and run Reviews processor
+      reviews = app_data['reviews']
+      # Init flag that marks if app needs to be saved back to database
+      is_save_needed_reviews = reviews_data_processor(app, reviews)
+      
+      # Init flag that marks if ranking needs to be saved back to database
+      is_save_needed_ranking = false  
+      # Check if rankings are passed and need to be processed  
+      if rankings != nil
         
         ranking = nil
-        if rankings.has_key?(country) && rankings[country].has_key?(app_id)
-          ranking = rankings[country][app_id]
+        app_id_string = String(Integer(app_id))
+        if rankings.has_key?(country) && rankings[country].has_key?(app_id_string)
+          ranking = rankings[country][app_id_string]
         end
-        
-        is_save_needed = true if store_data_processor(app, store_index, country, store_data, store_reviews, ranking)
+        is_save_needed_ranking, app = rankings_data_processor(app, ranking)
       end
-
-      if is_save_needed
-        # If any of the data processors returned true data needs to be saved
-        app.save
-        puts AppData.name + ": DATA SAVED"
+      
+      # Init flag that marks if categorization needs to be saved to database
+      is_save_needed_categorize = false
+      # In order to categorize the apps as they are scrapped and before
+      # saving them into the database, we use the categories and interests
+      # that were previously read to memory, and calling categorization per app
+      if categorize
+        # Catch if app categorization changed for category, subcategory, or
+        # interest
+        is_save_needed_categorize, app =
+          ScraperCategorizer.categorize_app(app, categories, interests)
+      end
+      
+      # Check all flags to see if anything has change and save is needed
+      if is_save_needed_app || is_save_needed_reviews ||
+         is_save_needed_ranking || is_save_needed_categorize
+        if !app.save
+           puts AppData.name + ": DATA FAILED TO SAVE\n\n"
+        else
+           puts AppData.name + ": DATA SAVED\n\n" 
+        end
       else
-        puts AppData.name + ": Data up to date"
+        puts AppData.name + ": NO UPDATES\n\n"
       end
-    end
+   end
+   
   end
   
+#-------------------------- Main Scrape Methods ------------------------------#
+  
   # Method to scrape all apps from the app store
-  def self.scrape_apps_all()
-    scrape_apps(ScraperWorker.scrape_all)
+  def self.scrape_apps_all(rankings, get_reviews, categorize)
+    scrape_apps(ScraperWorker.scrape_all(get_reviews),
+                rankings, categorize)
   end
   
   # Method to scrape all apps in a certain letter from the app store
-  def self.scrape_apps_letter(letter)
-    rankings = ScraperWorker.get_rankings
-    scrape_apps(ScraperWorker.scrape_letter(letter), rankings)
+  def self.scrape_apps_letter(letter, rankings, get_reviews, categorize)
+    scrape_apps(ScraperWorker.scrape_letter(letter, get_reviews),
+                rankings, categorize)
   end
   
   # method to scrape a specific app
-  def self.scrape_apps_id(app_id)
-    rankings = ScraperWorker.get_rankings
-    # Pass to scrape_apps the right format for the data
-    scrape_apps( { app_id => ScraperWorker.scrape_app(app_id)} , rankings)
+  def self.scrape_apps_id(app_id, rankings, get_reviews, categorize)
+    scrape_apps(ScraperWorker.scrape_app(app_id, get_reviews),
+                rankings, categorize)
   end
   
   # method to scrape all apps with rankings
-  def self.scrape_apps_ranked()
-    rankings = ScraperWorker.get_rankings
-    
-    
-    rankings.each do |country, ranks|
-      ranks.each do |app_id, app_data|
-        # Pass to scrape_apps the right format for the data
-        scrape_apps( { app_id => ScraperWorker.scrape_app(app_id)}, rankings )
+  def self.scrape_apps_ranked(rankings, get_reviews, categorize)
+    if (rankings != nil)
+      rankings.each do |country, ranks|
+        ranks.each do |app_id, app_data|
+          scrape_apps(ScraperWorker.scrape_app(app_id, get_reviews),
+                      rankings, categorize)
+        end
       end
     end
   end
   
 end
 
-# Uncomment one of the lines below in order to run the scraper
-#Scraper.scrape_apps_id('352320289')
-#Scraper.scrape_apps_letter('A')
-#Scraper.scrape_apps_ranked()
-#Scraper.scrape_apps_all()
+#------------------------------------ RUN ------------------------------------#
+
+# first try and show proper usage if arguments aren't well-formed:
+def usage
+  abort "usage: rails runner #{__FILE__} -- [options]"
+end
+
+# Check if -- exists, if not, exit and show usage
+usage unless ARGV.include?("--")
+
+# Clean up ARGV up to -- :
+loop { break if ARGV.shift == "--" }
+
+# Holds the options parsed from the command-line
+options = {}
+
+optparse = OptionParser.new do |opts|
+  # In order to only categorize all the apps without scrapping, the script has
+  # to be run with a -c flag only. Otherwise, if certain ids are provided in a
+  # list, they will be scraped, and with no ids the scraper will depends on the 
+  # options, such as per letter or all. Including the -c flag while scraping
+  # will categorize the apps as well as part of the process.
+
+  # Set a banner, displayed at the top of the help screen.
+  opts.banner = "Usage: scraper.rb [options] [id1 id2 ...  - Priority 1]"
+ 
+  # Options (with priority for execution decision)
+  # Priority 1 - specific ids provided
+  # Priority 2 - specific letter provided
+  # Priority 3 - ranked apps requested
+  # Priority 4 - all apps requested
+  # Categorize flag - categorize apps as well or not, or just categorize apps
+  # Reviews Flag - get reviews as well or not
+   
+  options[:reviews] = false
+  opts.on( '-r', '--reviews', 'Scrape reviews as well if set' ) do
+    options[:reviews] = true
+  end
+  
+  options[:categorize] = false
+  opts.on('-c', '--categorize', 'Categorize apps') do
+    options[:categorize] = true
+  end
+  
+  options[:weight] = nil
+  opts.on('-w', '--weight GAMMA',
+          'Recalculate the weight for sorting the apps according to the gamma value passed') do |gamma|
+    gamma = gamma.to_f
+    puts "Error: Gamma has to be a float between 0 to 1 (inclusive)" unless gamma >= 0 && gamma <= 1
+    options[:weight] = gamma
+  end
+  
+  options[:letter] = nil
+  opts.on( '-l', '--letter LETTER', 'Scrape apps in letter - Priority 2' ) do |letter|
+    options[:letter] = letter
+  end
+  
+  options[:rankings] = false
+  opts.on( '-R', '--ranked', 'Scrape ranked apps - Priority 3' ) do
+    options[:rankings] = true
+  end
+  
+  options[:all] = false
+  opts.on( '-a', '--all', 'Scrape all apps - Priority 4' ) do
+    options[:all] = true
+  end
+ 
+  # Display the help screen and exit
+  opts.on( '-h', '--help', 'Show help' ) do
+    puts opts
+    exit
+  end
+end
+
+# Parses ARGV and removes any options found there,
+# as well as any parameters for the options.
+optparse.parse!
+
+# What's left is the list of ids to scrape
+ids = ARGV
+
+# Find which function to execute
+# Note: The order of checks is important, and once got into an if statement
+# the otherones should not be checked since program exists.
+
+# First check if rankings are needed, if so get them
+rankings = nil
+if options[:rankings]
+  rankings = ScraperWorker.get_rankings
+end
+
+# If specific ids were found, scrape these apps only
+if !ids.empty?  
+  ids.each do |id|
+    Scraper.scrape_apps_id(id, rankings,
+                           options[:reviews], options[:categorize])
+  end
+  exit
+end
+
+# If specific letter was found, scrape the letter only
+if options[:letter] != nil
+  letter = options[:letter]
+  
+  if letter.length != 1
+    # Check that letter only one char, otherwise exit
+    puts optparse
+    exit
+  end
+  
+  puts "Scrapping letter: " + letter
+  Scraper.scrape_apps_letter(letter, rankings,
+                             options[:reviews], options[:categorize])
+  exit 
+end
+
+# If all apps flag is set, scrape all apps
+if options[:all]
+  puts "Scrapping all apps"
+  Scraper.scrape_apps_all(rankings,
+                          options[:reviews], options[:categorize])
+  exit 
+end
+
+# If rankings is the only flag set, get all ranked apps
+if options[:rankings]
+  puts "Scrapping all ranked apps"
+  Scraper.scrape_apps_ranked(rankings,
+                             options[:reviews], options[:categorize])
+  exit 
+end
+
+# If categorize is the only flag set, just categorize apps
+if options[:categorize]
+  puts "Categorizing all apps"
+  ScraperCategorizer.categorize_all(AppData.all)
+  
+  exit
+end
+
+# If weight is the only flag set, recalculate the weights
+if options[:weight] != nil
+  puts "Recalculating the weight for all apps with gamma: %f" % options[:weight]
+  Scraper.calculate_weight(options[:weight])
+  
+  exit
+end
+
+# If reached to this point, show the usage screen
+puts optparse
+exit

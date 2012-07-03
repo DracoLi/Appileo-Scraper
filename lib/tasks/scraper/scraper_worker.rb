@@ -6,18 +6,18 @@ module ScraperWorker
   # Scrape all the apps.
   # Returns a hash that contains the itunes information per store
   # and their respective reviews.
-  def self.scrape_all()
+  def self.scrape_all(get_reviews)
   
     # Initialize variables
-    apps = Hash.new
+    apps = []
     
     # Iterate through every letter and scrape
     "A".upto("Z") do |letter|
-      apps.merge!(scrape_letter(letter))
+      apps.concat(scrape_letter(letter, get_reviews)) 
     end
     
     # Scrape apps that start with numbers too
-    apps.merge!(scrape_letter("*"))
+    apps.concat(scrape_letter("*", get_reviews))
     
     return apps
   end
@@ -25,23 +25,26 @@ module ScraperWorker
   # Scrape only apps that start with the given letter.
   # Returns a hash that contains the itunes information per store
   # and their respective reviews.
-  def self.scrape_letter(letter)
+  def self.scrape_letter(letter, get_reviews)
     
     # Initialize variables
-    apps = Hash.new
+    apps = []
     app_ids = Hash.new
     app_count = 0 # How many apps we have processed so far
+    total_apps = 0 # Total number of apps for this letter
   
     # We are only interested in the apps ID
     app_ids = get_apps_per_letter(letter)
+    total_apps = app_ids.length
     
     # Iterate through every app and scrape
     (app_ids).each do |app_id|
     
-      apps[app_id] = scrape_app(app_id)
+      apps << scrape_app(app_id, get_reviews)
       app_count += 1
       
       #TODO: REMOVE -- for testing only
+      puts "scraping app %d out of %d" % [app_count, total_apps] if DEBUG
       break if (DEBUG and app_count >= DEBUG_MAX_APPS)
       
     end
@@ -52,26 +55,28 @@ module ScraperWorker
   # Scrape only the app specified by app_id
   # Returns a hash that contains the itunes information per store
   # and their respective reviews
-  def self.scrape_app(app_id)
+  def self.scrape_app(app_id, get_reviews)
     
     # Initialize variables
-    app = Hash.new
-    
-    # Initialize variables
-    app[:result] = Hash.new
-    app[:reviews] = Hash.new
+    apps = []
     
     (STORES).each do |store|
       
-        # Make a call to the itunes API
-        app[:result][store[:code]] = itunes_lookup(app_id, store[:code])
+        # Initialize variables
+        app = {}
+        app["reviews"] = {}
+        app["store"] = store[:code]
         
+        # Make a call to the itunes API
+        app.merge!(itunes_lookup(app_id, store[:code]))
         # Get the reviews
-        #app[:reviews][store[:code]] = fetch_reviews(app_id, store[:id])
+        app["reviews"] = fetch_reviews(app_id, store[:id]) if get_reviews
+        
+        apps << app
       
       end
       
-    return app
+    return apps
   end
 
 
@@ -184,12 +189,12 @@ module ScraperWorker
         meta    = strings[2].inner_text.split(/\n/).map { |x| x.strip }
         
         # Create hash with information
-        review[:rating]  = node.inner_html.match(REVIEW_RATING_REGEX)[1].to_i
-        review[:author]  = meta[3]
-        review[:version] = meta[7][REVIEW_VERSION_REGEX, 1] unless meta[7].nil?
-        review[:date]    = meta[10]
-        review[:subject] = strings[0].inner_text.strip
-        review[:body]    = strings[3].inner_html.gsub(BR, NEW_LINE).strip
+        review["rating"]  = node.inner_html.match(REVIEW_RATING_REGEX)[1].to_i
+        review["author"]  = meta[3]
+        review["version"] = meta[7][REVIEW_VERSION_REGEX, 1] unless meta[7].nil?
+        review["date"]    = meta[10]
+        review["subject"] = strings[0].inner_text.strip
+        review["body"]    = strings[3].inner_html.gsub(BR, NEW_LINE).strip
         
         # Store information
         reviews << review
@@ -198,6 +203,7 @@ module ScraperWorker
         more_available = true
       end
       
+      # Go through one review page only
       page += 1
     end
     
