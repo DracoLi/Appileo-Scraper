@@ -9,8 +9,9 @@ Appileo::Application.routes.draw do
   
   # This route can be invoked with
   #lookup_url()
-  match "/lookup"                     => "app_data#lookup_data",
+  match "/lookup/:country"                     => "app_data#lookup_data",
         :via => [:get],
+        :constraints => constraint_dict,
         :as => :lookup
   
   # This route can be invoked with
