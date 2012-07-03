@@ -3,7 +3,7 @@ module ScraperConstants
   ### Debug info
   
   # Enable and disable debugging
-  DEBUG           = true
+  DEBUG           = false
   # Limit on how many pages of apps to scrape from itunes. 
   # NOTE: Only works if DEBUG enabled.
   DEBUG_MAX_PAGES = 1

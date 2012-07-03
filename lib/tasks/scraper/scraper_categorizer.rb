@@ -26,7 +26,7 @@ module ScraperCategorizer
     
     # Open and parse categories file
     File.open(CATEGORY_FILE, 'r') do |f|
-      categories = ActiveSupport::JSON.decode(f.read)
+      categories = ActiveSupport::JSON.decode(f.read.downcase)
     end
     
     return categories
@@ -38,7 +38,7 @@ module ScraperCategorizer
     
     # Open and parse interest file
     File.open(INTEREST_FILE, 'r') do |f|
-      interests = ActiveSupport::JSON.decode(f.read)
+      interests = ActiveSupport::JSON.decode(f.read.downcase)
     end
     
     return interests
@@ -76,6 +76,7 @@ module ScraperCategorizer
     
     # If category found check for subcategory
     if category != nil
+      puts category
       # Get the sub categories for highest ranked category
       sub_categories = categories[category][SUB_CAT]
       sub_category = keyword_match(app, sub_categories)[0]
@@ -166,7 +167,7 @@ module ScraperCategorizer
     rank = rank.sort_by{|k,v| v}.reverse
     
     # Return top hit or list of hits based on the top argument  
-    top ? result << rank[0][0].downcase : rank.each { |keyword| result << keyword[0].downcase } 
+    top ? result << rank[0][0] : rank.each { |keyword| result << keyword[0] } 
     
     return result
   end
