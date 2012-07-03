@@ -35,7 +35,7 @@ group :development, :test do
   gem 'rspec-rails'
   gem 'spork'
   gem 'factory_girl_rails'
-  gem 'mongoid-rspec'
+  #gem 'mongoid-rspec'
 end
 
 # To use ActiveModel has_secure_password
