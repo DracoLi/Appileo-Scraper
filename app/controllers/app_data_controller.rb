@@ -37,7 +37,7 @@ class AppDataController < ApplicationController
     
   end
   
-  # API call /new/:country(/:category_top) handler
+  # API call /new/:country(/:category_new) handler
   # returns the list of apps that match the new criteria for any category
   def new_data
     
