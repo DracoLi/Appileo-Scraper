@@ -2,36 +2,42 @@ API Documentation
 =================
 
 
-GENERAL STRUCTURE (GET):
-========================
-
-http://www.appileo.com/{method}?(/{device}/?({category}))
-
-method => ['top', 'new', 'lookup']
-device => ['iphone', 'ipad']
-category => ['free', 'paid', 'gros']
-
-
 LOOKUP:
 =======
 
-=>http://www.appileo.com/lookup?
+=> GET request in order to do the lookups/search/filter data
+http://www.appileo.com/lookup/{country}?{parameters}
 
-Parameters:
-a_id					'12345'
-name					'Lord of the rings'
-p_id                    '54321'
-publisher               'Hyper H Labs'
-country                 'CA'
-device                  'iphone'
-min_price               '1.99'
-max_price               '9.00'
-min_app_rating          '3'
-max_app_rating          '4.5'
+= country => 
+Value has to be the codename of the country, such as 'us' or 'ca'.
+Note: In order to scrape additional countries, please change the STORES
+      variable in scraper_constants.rb.
+
+= Parameters => * See section below
+At least one query parameter is required in order to run a lookup on the data.
 
 
-TOP/NEW:
-========
+TOP:
+=======
+
+=> GET request in order to do get the top apps
+http://www.appileo.com/top/{country}/{device}/{category}?{parameters}
+
+= country => 
+Value has to be the codename of the country, such as 'us' or 'ca'.
+Note: In order to scrape additional countries, please change the STORES
+      variable in scraper_constants.rb.
+      
+= device =>
+Device has to be choosed in between 'iphone' and 'ipad'.
+
+= category =>
+The cateory can be either free, paid, or grossing apps. The values provided are
+'free', 'paid', or 'gros' respectivelly.
+
+= Parameters => *
+
+Examples:
 
 => http://www.appileo.com/top/ca/iphone/free
 Retrieves top 300 iPhone free apps for the Canadian store
@@ -42,8 +48,123 @@ Retrieves top 300 iPad paid apps for the Canadian store
 => http://www.appileo.com/top/us/iphone/gros
 Retrieves top 300 iPhone grossing apps for the US store
 
+
+
+NEW:
+=======
+
+=> GET request in order to do get the new apps
+http://www.appileo.com/new/{country}/{category}?{parameters}
+
+= country => 
+Value has to be the codename of the country, such as 'us' or 'ca'.
+Note: In order to scrape additional countries, please change the STORES
+      variable in scraper_constants.rb.
+      
+= category =>
+The cateory can be either free or paid apps. The values provided are
+'free' or 'paid' respectivelly.
+
+Note: Since there is no clear categorization in Apple's new lists for devices,
+such as iphone and ipad, one must filter by the devices attribute on the
+AppData model in order to ask for specific devices. 
+
+= Parameters => *
+
+Examples:
+
 => http://www.appileo.com/new/ca/free
 Retrieves 100 newest free apps for the Canadian store
 
 => http://www.appileo.com/new/us/
 Retrieves 100 newest apps for the US store
+
+
+= Parameters =
+==============
+
+Query parameters allow you to filter, sort, and specify fields of the dataset.
+Following are the specifications for the optional fields that can be used:
+
+'sort_by'=String:
+You can retrieved sorted data by providing one of the values listed below to the
+sort_by key.
+[  'name', 'a_id', 'pub_id' , 'weight', 'category', 
+   'sub_category', 'interests', 'release_date', 
+   'total_ratings_count', 'total_average_rating',
+   'current_ratings_count', 'current_average_rating',
+   'new_apps', 'new_free_apps', 'new_paid_apps', 
+   'top_free_apps_iphone', 'top_paid_apps_iphone',
+   'top_gros_apps_iphone', 'top_free_apps_ipad',
+   'top_paid_apps_ipad', 'top_gros_apps_ipad', 'amount',
+   'pub_name']
+Note that these keys are indexed, in order to sort by other keys, add a new
+index on the key first in the create_indexes method on the AppData model that
+lives in app_data.rb. This is in order to retrieve data quickly.
+
+'limit'=Integer:
+Provide a limit number in order to get a specific set size for the response.
+
+'fields'=Array (comma delimited list):
+By passsing an array of attributes to the fields parameter the returned dataset
+will have only this fields instead of all of them. Please see the model file,
+app_data.rb, in order to see all the field attributes that can be listed here.
+
+'min_price'/'max_price'=Float:
+By providing a minimum price and/or a maximum price you can limit the results to
+include only apps that have a cost in between these two amounts (inclusive).
+Note that each country has a different currency.
+
+'min_app_rating'/'max_app_ratig'=Float:
+By providing a minimum app rating and/or a maximum app rating you can limit the
+results to include only apps that have ratings in between these two amounts
+(inclusive).
+
+'name'=String:
+By providing a name of the app the search will query all apps that have the
+String provided in their name.
+
+'a_id'=Integer:
+Get a specific app by providing one app id that identify it.
+
+'pub_name'=String:
+By providing the developer/publisher name of the app the search will query all
+apps that have the String provided in their pub_name.
+
+'pub_id'=Integer:
+Get all the apps for a specific developer/publisher by providing their unique
+identifier.
+
+'devices'=Array (comma delimited list):
+Provide a list of specific devices in order to retrive only those relevant
+apps. Note that iPhone3GS, iPhone4, iPod3, and such need to be specified.
+
+'category'=String:
+Provide a specific category in order to get apps only from this category.
+
+'sub_category'=String:
+Provide a specific subcategory in order to get apps only from this subcategory.
+
+'interests_only'=Array (comma delimited list):
+Provide a list of all the interests that you would like to filter by. The apps
+returned will include only apps that have at least one of the interests listed.
+
+
+'interests'=Array (comma delimited list):
+Provide a list of all the interests that you would like them to have preference.
+The apps returned will include a field of weighted interests and interest
+matches.
+ 
+Basic examples:
+a_id					'12345'
+name					'Lord of the rings'
+p_id                    '54321'
+publisher               'Hyper H Labs'
+country                 'CA'
+device                  'iphone'
+min_price               '1.99'
+max_price               '9.00'
+min_app_rating          '3'
+max_app_rating          '4.5'
+limit                   '10'
+interests               'soccer, cars'

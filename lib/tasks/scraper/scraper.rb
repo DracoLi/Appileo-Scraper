@@ -5,12 +5,13 @@ module Scraper
 
   include ScraperWorker
   include ScraperCategorizer
+  # Constants
+  include ScraperConstants
   
-  # Define the maximum rating from the app store for the categorization
-  MAX_RATING = 5
-  
-  # This method calculates the weight of the apps
-  def self.calculate_weight(gamma)
+  # This method calculates the weight of all the apps
+  # has to be run over all apps and not just scrapped ones since it uses
+  # the top number of ratings has a 100% of the ratings count level.
+  def self.calculate_weight()
     apps = AppData.all
     # Get the top number of ratings and convert to integer in case it's none
     top_ratings_count = AppData.sort(:total_ratings_count).last.total_ratings_count.to_i
@@ -20,9 +21,9 @@ module Scraper
       # Make sure that the result saved are float
       x = app.total_ratings_count.to_f / top_ratings_count
       y = app.total_average_rating.to_f / MAX_RATING
-      new_weight = gamma*x + (1-gamma)*y
+      new_weight = GAMMA_RATINGS*x + (1-GAMMA_RATINGS)*y
       
-      app.weight = new_weight
+      app.popularity_weight = new_weight
       app.save() if app.changed? && app.valid?
     end
     
@@ -225,7 +226,7 @@ module Scraper
                     'top_gros_apps_ipad' => ranking.has_key?('top_gros_apps_ipad') ? ranking['top_gros_apps_ipad'] : nil,
                     'new_apps' => ranking.has_key?('new_apps') ? ranking['new_apps'] : nil,
                     'new_free_apps' => ranking.has_key?('new_free_apps') ? ranking['new_free_apps'] : nil,
-                    'new_free_apps' => ranking.has_key?('new_free_apps') ? ranking['new_free_apps'] : nil }
+                    'new_paid_apps' => ranking.has_key?('new_paid_apps') ? ranking['new_paid_apps'] : nil }
       
       
     else
@@ -237,7 +238,7 @@ module Scraper
                     'top_gros_apps_ipad' => nil,
                     'new_apps' => nil,
                     'new_free_apps' => nil,
-                    'new_free_apps' => nil }  
+                    'new_paid_apps' => nil }  
     end
     
     app.attributes = attributes
@@ -264,15 +265,11 @@ module Scraper
 
   def self.scrape_apps(new_apps, rankings, categorize)
     
-    # If scaper returned successfully, load all apps to memory
-    # This allows comparisson without hitting the DB for every app
-    # NOTE: If data goes above machine RAM, work has to be done in chunks
-    # TODO: apps = AppData.all
-    
     # Load the categories and interests to the memory in order not to
     # read the files again and use it for all apps if categorization requested
     categories = ScraperCategorizer.get_categories()
     interests = ScraperCategorizer.get_interests()
+    sub_categories = ScraperCategorizer.get_subcategories(categories)
 
     # Iterate on all apps that were retrieved
     (new_apps).each do |app_data|
@@ -331,7 +328,7 @@ module Scraper
         # Catch if app categorization changed for category, subcategory, or
         # interest
         is_save_needed_categorize, app =
-          ScraperCategorizer.categorize_app(app, categories, interests)
+          ScraperCategorizer.categorize_app(app, categories, interests, sub_categories)
       end
       
       # Check all flags to see if anything has change and save is needed
@@ -407,7 +404,7 @@ optparse = OptionParser.new do |opts|
   # will categorize the apps as well as part of the process.
 
   # Set a banner, displayed at the top of the help screen.
-  opts.banner = "Usage: scraper.rb [options] [id1 id2 ...  - Priority 1]"
+  opts.banner = "Usage: scraper.rb -- [options] [id1 id2 ...  - Priority 1]"
  
   # Options (with priority for execution decision)
   # Priority 1 - specific ids provided
@@ -425,14 +422,6 @@ optparse = OptionParser.new do |opts|
   options[:categorize] = false
   opts.on('-c', '--categorize', 'Categorize apps') do
     options[:categorize] = true
-  end
-  
-  options[:weight] = nil
-  opts.on('-w', '--weight GAMMA',
-          'Recalculate the weight for sorting the apps according to the gamma value passed') do |gamma|
-    gamma = gamma.to_f
-    puts "Error: Gamma has to be a float between 0 to 1 (inclusive)" unless gamma >= 0 && gamma <= 1
-    options[:weight] = gamma
   end
   
   options[:letter] = nil
@@ -480,6 +469,7 @@ if !ids.empty?
     Scraper.scrape_apps_id(id, rankings,
                            options[:reviews], options[:categorize])
   end
+  Scraper.calculate_weight()
   exit
 end
 
@@ -496,6 +486,7 @@ if options[:letter] != nil
   puts "Scrapping letter: " + letter
   Scraper.scrape_apps_letter(letter, rankings,
                              options[:reviews], options[:categorize])
+  Scraper.calculate_weight()
   exit 
 end
 
@@ -504,6 +495,7 @@ if options[:all]
   puts "Scrapping all apps"
   Scraper.scrape_apps_all(rankings,
                           options[:reviews], options[:categorize])
+  Scraper.calculate_weight()
   exit 
 end
 
@@ -512,6 +504,7 @@ if options[:rankings]
   puts "Scrapping all ranked apps"
   Scraper.scrape_apps_ranked(rankings,
                              options[:reviews], options[:categorize])
+  Scraper.calculate_weight()
   exit 
 end
 
@@ -519,15 +512,6 @@ end
 if options[:categorize]
   puts "Categorizing all apps"
   ScraperCategorizer.categorize_all(AppData.all)
-  
-  exit
-end
-
-# If weight is the only flag set, recalculate the weights
-if options[:weight] != nil
-  puts "Recalculating the weight for all apps with gamma: %f" % options[:weight]
-  Scraper.calculate_weight(options[:weight])
-  
   exit
 end
 
