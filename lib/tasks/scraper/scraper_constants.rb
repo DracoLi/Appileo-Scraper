@@ -2,8 +2,56 @@ module ScraperConstants
 
   ### Debug info
   
+  # Define the maximum rating from the app store for the categorization
+  MAX_RATING = 5
+  
+  # Define the weight gamma variable for the weighted average between the 
+  # total number of ratings to the total average rating.
+  # Weighted average by percentages equals to:
+  # GAMMA     * TOTAL_RATINGS_COUNT / MAX_RATINGS_COUNT +
+  # (1-GAMMA) * TOTAL_AVERAGE_RATING / MAX_RATING
+  # Note: Gamma has to be between zero and 1 inclusive
+  GAMMA_RATINGS = 0.8
+  
+  # Define the weight gamma variable for the weighted average between the 
+  # popularity metric (# of ratings/ave rating) to interests matches
+  # Weighted average by percentages equals to:
+  # GAMMA     * populrity +
+  # (1-GAMMA) * number of interest matches
+  # Note: Gamma has to be between zero and 1 inclusive
+  GAMMA_INTERESTS = 0.5
+  
+  
+  
+  
+    # Path to the categories and interest files
+  CATEGORY_FILE = "#{Rails.root}/app/assets/data/category_tags.json"
+  INTEREST_FILE = "#{Rails.root}/app/assets/data/interest_tags.json"
+  
+  # Regex to split array
+  SCAN_REGEX          = /[\w-]+/
+  # Part of regex that matches a space and a word.
+  WORD_SPACE_REGEX    = /(\s{1,}\w{1,})/
+  
+  # key name for the keywords to match
+  KEYWORD_MATCH       = 'matches'
+  # key name for the minimum number of required tags
+  KEYWORD_MIN_TAGS    = 'min_tags'
+  # Multiplier for when a keyword match is found on the title
+  TITLE_MATCH_MULT    = 3
+  # Minimum number of matches before tagging
+  KEY_MIN_MATCHES     = 1
+  
+  # sub categories key name
+  SUB_CAT       = 'subcats'
+  
+  # sub category parent
+  SUB_CAT_PARENT  = 'parent'
+  
+  
+  
   # Enable and disable debugging
-  DEBUG           = false
+  DEBUG           = true
   # Limit on how many pages of apps to scrape from itunes. 
   # NOTE: Only works if DEBUG enabled.
   DEBUG_MAX_PAGES = 1
@@ -162,4 +210,12 @@ module ScraperConstants
 #  { :name => 'Venezuela',            :id => 143502},
 #  { :name => 'Vietnam',              :id => 143471},
 ]
+
+  def self.getGammaInteretsts()
+    return GAMMA_INTERESTS
+  end
+  
+  def self.getGammaRatings()
+    return GAMMA_RATINGS
+  end
 end
