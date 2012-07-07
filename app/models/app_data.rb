@@ -22,7 +22,7 @@ class AppData
   # Categorization attributes - Used by ScraperCategorizer task
   key :category,    String
   key :sub_category, String
-  key :interest, Array
+  key :interests, Array
   
   # Data below kept at the Document level to allow sorting and filtering
   
@@ -37,7 +37,7 @@ class AppData
   key :current_average_rating,    Float
   
   # Weight calculated from scrapper runner
-  key :weight,                    Float
+  key :popularity_weight,                    Float
   
   # Ranks data
   key :new_apps,                  Integer
@@ -60,7 +60,7 @@ class AppData
   key :pub_id,        Float,    :required => true
   key :pub_name,      String,     :required => true
   key :pub_company,   String,     :required => true
-  key :pub_link,              String,   :required => true
+  key :pub_link,              String
  
   # Pics
   key :pic_iphone,      Array
@@ -87,11 +87,11 @@ class AppData
     # variables that end with _id are already indexes by default
     self.ensure_index(:name)
     
-    self.ensure_index([[:weight, -1]])
+    self.ensure_index([[:popularity_weight, -1]])
     self.ensure_index([[:category, 1], [:sub_category, 1]])
     self.ensure_index(:sub_category)
     
-    self.ensure_index(:interest)
+    self.ensure_index(:interests)
     self.ensure_index(:country)
     self.ensure_index(:release_date)
     self.ensure_index([[:total_ratings_count, -1]])
