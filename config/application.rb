@@ -65,6 +65,10 @@ module Appileo
     # Version of your assets, change this if you want to expire all your assets
     config.assets.version = '1.0'
     
+    # Added the scraper to the assets pipeline in order to be able to access
+    # the values, and specifically the constants from the controllers
+    config.assets.paths << "#{Rails.root}/lib/tasks/scraper"
+    
     # Allows 'rails generate model' command to with MongoMapper
     config.generators do |g|
       g.orm :mongo_mapper
