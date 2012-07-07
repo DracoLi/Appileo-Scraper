@@ -1,24 +1,7 @@
 module ScraperCategorizer
   
-  # Path to the categories and interest files
-  CATEGORY_FILE = "#{Rails.root}/app/assets/data/category_tags.json"
-  INTEREST_FILE = "#{Rails.root}/app/assets/data/interest_tags.json"
-  
-  # Regex to split array
-  SCAN_REGEX    = /[\w-]+/
-  
-  # key name for the keywords to match
-  KEYWORD_MATCH       = 'matches'
-  # key name for the minimum number of required tags
-  KEYWORD_MIN_TAGS    = 'min_tags'
-  # Multiplier for when a keyword match is found on the title
-  TITLE_MATCH_MULT    = 3
-  # Minimum number of matches before tagging
-  KEY_MIN_MATCHES     = 1
-  
-  # sub categories key name
-  SUB_CAT       = 'subcats'
-  
+  # Constants
+  include ScraperConstants
   
   # Get the categories and return them
   def self.get_categories()
@@ -30,6 +13,20 @@ module ScraperCategorizer
     end
     
     return categories
+  end
+
+  def self.get_subcategories(categories)
+    sub_categories = {}
+
+    categories.each do |category_key, category_value|
+      category_value[SUB_CAT].each do |sub_key, sub_value|
+        # Keep track of the parent category
+        sub_value[SUB_CAT_PARENT] = category_key
+        sub_categories[sub_key] = sub_value
+      end
+    end
+    
+    return sub_categories
   end
   
   # Get the categories and return them
@@ -55,9 +52,12 @@ module ScraperCategorizer
     categories = get_categories()
     interests = get_interests()
     
+    # Get all subcategories
+    sub_categories = get_subcategories(categories)
+    
     # Iterate through the list of apps and categorize them
     apps.each do |app|
-      new_apps << categorize_app(app, categories, interests)
+      new_apps << categorize_app(app, categories, interests, sub_categories)
     end
     
     # Return the new list that includes arrays of save_needed flags and apps
@@ -66,7 +66,7 @@ module ScraperCategorizer
 
   # Categorize a specific app. Sets main category, sub category and interests
   # Returns a flag if any change has to be saved and the app itself
-  def self.categorize_app(app, categories, interests)
+  def self.categorize_app(app, categories, interests, sub_categories)
   
     # If app doesn't exist, return no save needed and nil
     return false, nil if app == nil
@@ -74,11 +74,17 @@ module ScraperCategorizer
     # Get the highest ranked category
     category = keyword_match(app, categories)[0]
     
-    # If category found check for subcategory
+    # If category found check for specific subcategory, otherwise search in
+    # all subcategories
     if category != nil
       # Get the sub categories for highest ranked category
-      sub_categories = categories[category][SUB_CAT]
+      sub_category = keyword_match(app, categories[category][SUB_CAT])[0]
+    else
+      # Search in all subcategories
       sub_category = keyword_match(app, sub_categories)[0]
+      
+      # If we matched a subcategory, assign the corresponding parent category
+      category = sub_categories[sub_category][SUB_CAT_PARENT] if sub_category != nil
     end
     
     # Get interests for given app
@@ -88,7 +94,7 @@ module ScraperCategorizer
     attributes = {
       'category' => category,
       'sub_category' => sub_category,
-      'interest' => interests
+      'interests' => interests
     }
     
     # Assign the new set of attributes
@@ -110,11 +116,30 @@ module ScraperCategorizer
   # When top=true it returns only the top hit, otherwise return the entire list 
   def self.keyword_match(app, keyword_list, top=true)
     
+    max_len = get_keyword_max_words(keyword_list)
+    
     # Parse the title and description of the app and count the number of 
     # occurences of each word
     title_words   = count_word_freq(app.name.downcase.scan(SCAN_REGEX))
     summary_words = count_word_freq(app.summary.downcase.scan(SCAN_REGEX))
     
+    (2..max_len).each do |i|
+      # This return an array of arrays with the matches
+      result_title = app.name.downcase.scan(create_multiword_regex(i))
+      result_summary = app.summary.downcase.scan(create_multiword_regex(i))
+      
+      # Create a single array so we can count word frequency to determine
+      # category
+      keywords_title = []
+      keywords_summary = []
+      result_title.each {|phrase| keywords_title << phrase.join }
+      result_summary.each {|phrase| keywords_summary << phrase.join }
+      
+      # Merge with our existing list
+      title_words.merge!(count_word_freq(keywords_title))
+      summary_words.merge!(count_word_freq(keywords_summary))
+    end
+
     # Initialize rank hash
     rank = Hash.new(0)
     
@@ -182,6 +207,32 @@ module ScraperCategorizer
     end
     
     return freq
+  end
+  
+  # Returns the maximum number of words a set of keywords has.
+  # This allows to create the regex to match multiple words
+  def self.get_keyword_max_words(categories)
+    keywords = []
+    categories.values.each { |category| keywords << category[KEYWORD_MATCH] }
+    keywords = keywords.flatten
+    
+    max_len = 2
+    keywords.each { |keyword| max_len = keyword.split.length if keyword.split.length > max_len }
+    
+    return max_len
+  end
+  
+  # Creates the regular expression that matches exactly LENGTH words
+  def self.create_multiword_regex(length)
+    
+    # We cannot make a multiword regular expression with less than 2 words
+    return if length < 2
+    
+    # Create the regex.
+    multi_word = WORD_SPACE_REGEX.to_s * (length - 1)
+    
+    # Return the regex
+    return /(\w{1,}(?=#{multi_word}))/
   end
 
 end
