@@ -1,11 +1,68 @@
-In order to test the scaper you can run
+=========================
+======== Scraper ========
+=========================
 
-rails runner lib/tasks/scraper/scraper.rb
+In order to run the scraper you should run the scraper.rb script from the rails
+runner feature. This will load all the Rails project related objects and classes
+to memory and this way the scraper has access to the AppData and Review models.
 
-after uncommenting one of the lines below that exists at the bottom of scraper.rb
+See below the usage of the script: 
 
-# Uncomment one of the lines below in order to run the scraper
-#Scraper.scrape_apps_id('352320289')
-#Scraper.scrape_apps_letter('A')
-#Scraper.scrape_apps_ranked()
-#Scraper.scrape_apps_all()
+$rails runner lib/tasks/scraper/scraper.rb --                                                                                                                                     /var/www/html/appileo
+Usage: scraper.rb -- [options] [id1 id2 ...  - Priority 1]
+    -r, --reviews                    Scrape reviews as well if set
+    -c, --categorize                 Categorize apps
+    -l, --letter LETTER              Scrape apps in letter - Priority 2
+    -R, --ranked                     Scrape ranked apps - Priority 3
+    -a, --all                        Scrape all apps - Priority 4
+    -h, --help                       Show help
+
+All parameters for the scraper have to be passed after the double dash -- since
+the parameters passed beforehand will be interpreted by the runner script
+instead of by the scraper one.
+
+If no parameters are provided to the scraper script, it will print the usage
+and exit.
+
+Specific app ids can be provided to the script as a space seperated list, and
+will have presedence over -a, -l, or -r flags.
+
+The -r flag will make sure that when the scraper scrapes apps, they will be
+scraped with reviews. Reviews are increasing the scraping time drastically,
+and especially with the ranked apps since they tend to have many of them.
+
+The -c flag will make sure that when the scraper scrapes apps, they will be
+categorized as well for their cateory, sub category, and interests. The data
+that is used for this process is saved in the app assets data folder and stored
+in json format.
+You can run the categorization only by passing only this flag and it will run
+on all the apps that exist in the database without scraping/updating apps.
+
+The -l flag calls the scraper just on one letter instead of all the apps. That
+could be helpful in case you would like to spread the work behind the scene
+on multiple shell scripts or run it at different times.
+
+The -R flag calls the scraper and asks it to scrape all the ranked apps. If this
+flag is provided by itself it will result with only the ranked apps to be
+scraped. Combining this flag with -a or -l will scrape all requested apps in -a
+or -l and match to them the ranking that was received.
+
+The -a flag scrapes all the apps in the app store. This script will take a long
+time to run.
+
+The -h flag prints the usage to the screen.
+
+Examples:
+
+$rails runner lib/tasks/scraper/scraper.rb -- -R -c 
+Scrapes all ranked apps and categorizes them.
+
+$rails runner lib/tasks/scraper/scraper.rb -- -r -c -R
+Scrapes all the ranked apps, categorizes, and retrieves their reviews as well.
+
+$rails runner lib/tasks/scraper/scraper.rb -- -c 484935962
+Scrapes and categorizes one specific app with app id.
+
+$rails runner lib/tasks/scraper/scraper.rb -- -l a
+Scrapes all apps in letter a without reviews or categorization 
+
