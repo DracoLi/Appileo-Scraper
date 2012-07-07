@@ -8,6 +8,8 @@ http://www.mongodb.org/downloads
 http://rubyonrails.org/download
 - MongoMapper (Gem)
 http://mongomapper.com/
+- Nokogiri
+http://nokogiri.org/
 
 In order to configure the database
 
@@ -16,9 +18,6 @@ This project includes two main components:
 2) The data API (./API.txt)
 
 Please see documentation at files mentioned above for more details.
-
-Models:
-In addition, you will find documentation about the models in ./app/models/README.txt
 
 MongoDB:
 In order to configure the database see:
