@@ -168,3 +168,22 @@ min_app_rating          '3'
 max_app_rating          '4.5'
 limit                   '10'
 interests               'soccer, cars'
+
+
+
+REVIEWS
+=======
+
+=> GET request in order to get all the reviews for a specific store and app id
+http://www.appileo.com/reviews/{country}?{app_id}
+
+= country => 
+Value has to be the codename of the country, such as 'us' or 'ca'.
+Note: In order to scrape additional countries, please change the STORES
+      variable in scraper_constants.rb.
+
+= app_id =>
+Value has to be an integer app id that represent the app that holds the reviews
+
+For example:
+http://www.appileo.com/reviews/us/500000336
