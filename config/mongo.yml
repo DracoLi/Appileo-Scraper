@@ -1,20 +1,16 @@
 defaults: &defaults
   host: 127.0.0.1
   port: 27017
-  databse: appileo
-  
+
 development:
   <<: *defaults
-  databse: appileo
+  database: appileo
 
 test:
   <<: *defaults
-  databse: appileo
+  database: appileo
 
 # set these environment variables on your prod server
 production:
   <<: *defaults
-  database: appileo
-  # Uncomment the username and password if you need to authenticate to database
-  #username: <%= ENV['MONGO_USERNAME'] %>
-  #password: <%= ENV['MONGO_PASSWORD'] %>
+  uri: <%= ENV['MONGOHQ_URL'] %>
