@@ -240,10 +240,10 @@ class AppDataController < ApplicationController
   def get_fields
     # Initialize fields to return with empty array in order to include all
     fields = []
+    delete_fields = []
     query_params = request.query_parameters
     if query_params.has_key? 'fields'
       fields = query_params['fields'].downcase.split(',')
-      delete_fields = []
       fields.each do |field|
         delete_fields << field unless (AppData.column_names.include?(field) || (field == 'review'))
       end
