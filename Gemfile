@@ -1,14 +1,8 @@
 source 'https://rubygems.org'
 
-require 'rubygems'
-require 'mongo'
-source 'http://gemcutter.org'
-
 gem 'rails', '3.2.5'
 gem "mongo_mapper"
 gem 'bson_ext'
-
-require 'open-uri'
 gem "nokogiri"
 
 # Bundle edge Rails instead:
