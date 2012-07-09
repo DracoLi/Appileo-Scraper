@@ -145,6 +145,32 @@ class AppDataController < ApplicationController
     
   end
   
+  def reviews_data
+    # Get the app with the requested country and app id
+    
+    apps = AppData.where({
+      :country => params[:country],
+      :a_id => Float(params[:a_id])
+      }
+    )
+    
+    if (apps == nil || apps.count == 0)
+      # If the app was not found
+      render :json => {
+        :success    => false,
+        :message    => "App data not found",
+        :apps_data  => []
+      }
+    else
+      # Return result as json
+      render :json => {
+        :success    => true,
+        :message    => "Success",
+        :reviews_data  => apps.first.review.as_json()
+      }
+    end
+  end
+  
   ##### Helper methods #####
   
   # Get the query to filter results from the model.
@@ -216,12 +242,12 @@ class AppDataController < ApplicationController
     query_params = request.query_parameters
     if query_params.has_key? 'fields'
       fields = query_params['fields'].downcase.split(',')
+      delete_fields = []
       fields.each do |field|
-        fields.delete(field) if !AppData.column_names.include? field
+        delete_fields << field unless (AppData.column_names.include?(field) || (field == 'review'))
       end
     end
-    
-    return fields
+    return fields - delete_fields
   end
   
   # Go over all passed fields and remove the ones we don't want

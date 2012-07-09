@@ -27,6 +27,11 @@ Appileo::Application.routes.draw do
         :via => [:get],
         :constraints => constraint_dict,
         :as => :new
+        
+  match "/reviews/:country/:a_id" => "app_data#reviews_data",
+        :via => [:get],
+        :constraints => constraint_dict,
+        :as => :reviews
 
   # Root of the site
   # note: public/index.html has to be removed
