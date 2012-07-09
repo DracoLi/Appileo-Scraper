@@ -16,7 +16,7 @@ module ScraperConstants
   # Define the weight gamma variable for the weighted average between the 
   # popularity metric (# of ratings/ave rating) to interests matches
   # Weighted average by percentages equals to:
-  # GAMMA     * populrity +
+  # GAMMA     * popularity +
   # (1-GAMMA) * number of interest matches
   # Note: Gamma has to be between zero and 1 inclusive
   GAMMA_INTERESTS = 0.5

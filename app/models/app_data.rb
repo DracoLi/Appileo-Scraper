@@ -37,7 +37,7 @@ class AppData
   key :current_average_rating,    Float
   
   # Weight calculated from scrapper runner
-  key :popularity_weight,                    Float
+  key :popularity_weight,         Float
   
   # Ranks data
   key :new_apps,                  Integer

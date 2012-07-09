@@ -2,6 +2,11 @@ require 'cgi'
 
 class AppDataController < ApplicationController
   
+  def all_data
+    limit_num = get_limit
+    render json: AppData.limit(limit_num).all
+  end
+  
   # API call /top/:country/:device/:category_top handler
   # returns the list of apps that match the top criteria for any category
   def top_data
@@ -93,11 +98,7 @@ class AppDataController < ApplicationController
     apps = weight_interests(apps, request.query_parameters['interests'])
     
     # Return result as json
-    render :json => {
-      :success    => true,
-      :message    => "Success",
-      :apps_data  => apps.as_json(:only => fields, :except => without)
-    }
+    render :json => apps.as_json(:only => fields, :except => without)
     
   end
   

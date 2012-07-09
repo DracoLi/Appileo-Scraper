@@ -40,7 +40,7 @@ module ScraperWorker
     # Iterate through every app and scrape
     (app_ids).each do |app_id|
     
-      apps << scrape_app(app_id, get_reviews)
+      apps.concat scrape_app(app_id, get_reviews)
       app_count += 1
       
       #TODO: REMOVE -- for testing only

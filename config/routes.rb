@@ -45,4 +45,6 @@ Appileo::Application.routes.draw do
   match "/interests_update", to: 'interests#update', via: :post
   match "/interests_destroy", to: 'interests#destroy', via: :delete
   match "/interests/raw", to: 'interests#raw'
+  match "/home", to: "home#index", via: :get
+  match "/all", to: "app_data#all_data"
 end
